@@ -6,10 +6,24 @@ struct SettingsView: View {
 
     // 周起始日：1=周日 ... 7=周六；默认周一（与 CalendarViewModel 共用键）
     @AppStorage(CalendarViewModel.firstWeekdayKey) private var firstWeekday = 2
+    // 外观偏好：system/light/dark（与 RootTabView 共用键）
+    @AppStorage(AppearanceSetting.key) private var appearance = AppearanceSetting.system
 
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Picker("外观", selection: $appearance) {
+                        Text("跟随系统").tag(AppearanceSetting.system)
+                        Text("浅色").tag(AppearanceSetting.light)
+                        Text("深色").tag(AppearanceSetting.dark)
+                    }
+                    .pickerStyle(.segmented)
+                    .listRowBackground(Color.clear)
+                } header: {
+                    Text("外观")
+                }
+
                 Section {
                     NavigationLink {
                         MemberManagementView()

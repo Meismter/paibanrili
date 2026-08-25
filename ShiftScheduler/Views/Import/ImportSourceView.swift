@@ -27,11 +27,14 @@ struct ImportSourceView: View {
         var contentTypes: [UTType] {
             switch self {
             case .docx:
-                return [UTType(filenameExtension: "docx") ?? .data]
+                // 保底用显式 UTI，避免 .data 作为 allowedContentTypes 导致文件选择器禁选
+                return [UTType(filenameExtension: "docx")
+                        ?? UTType(importedAs: "org.openxmlformats.wordprocessingml.document")]
             case .xlsx:
-                return [UTType(filenameExtension: "xlsx") ?? .data]
+                return [UTType(filenameExtension: "xlsx")
+                        ?? UTType(importedAs: "org.openxmlformats.spreadsheetml.sheet")]
             case .txt:
-                return [.plainText, .text, UTType(filenameExtension: "txt") ?? .text]
+                return [.plainText, .text]
             }
         }
     }
@@ -80,7 +83,14 @@ struct ImportSourceView: View {
             guard case let .success(urls) = result, let url = urls.first else { return }
             Task {
                 await viewModel.parseFile(at: url)
-                presentPreviewIfNeeded()
+                if viewModel.drafts.isEmpty {
+                    // 解析 0 条：把静默失败显性化，提示用户（错误或格式问题）
+                    resultMessage = viewModel.errorMessage
+                        ?? "未能从文件中识别出排班内容，请检查文件格式或尝试粘贴文本"
+                    showResultAlert = true
+                } else {
+                    presentPreviewIfNeeded()
+                }
             }
         }
         .sheet(isPresented: $showPasteSheet) {
