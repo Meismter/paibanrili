@@ -45,6 +45,9 @@ public struct ShiftSlot: Codable, Hashable, Identifiable, Sendable {
         if isRest { return 0 }
         return endMinutes <= startMinutes ? (1440 - startMinutes + endMinutes) : (endMinutes - startMinutes)
     }
+
+    /// Identifiable 协议要求：与 ScheduleEntry.id 对齐用于去重与刷新判断
+    public var id: UUID { entryID }
 }
 
 /// 某归属日（当日 12:00 本地）的班次列表
