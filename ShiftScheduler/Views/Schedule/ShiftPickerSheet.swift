@@ -51,6 +51,7 @@ struct ShiftPickerSheet: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
             .navigationTitle("选择班次")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

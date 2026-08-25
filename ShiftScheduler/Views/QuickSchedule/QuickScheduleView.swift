@@ -17,6 +17,7 @@ struct QuickScheduleView: View {
                 rotationSection
                 previewSection
             }
+            .scrollContentBackground(.hidden)
             .navigationTitle("快速排班")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -18,11 +18,6 @@ struct DayCellView: View {
                 .fontWeight(isToday ? .bold : .regular)
                 .foregroundStyle(isToday ? Color.accentColor : .primary)
                 .frame(width: 22, height: 22)
-                .background {
-                    if isToday {
-                        Circle().fill(Color.accentColor.opacity(0.16))
-                    }
-                }
 
             ForEach(visibleSlots) { slot in
                 capsule(for: slot)
@@ -68,7 +63,8 @@ struct DayCellView: View {
     @ViewBuilder
     private func capsule(for entry: ScheduleEntry) -> some View {
         if let shift = entry.shiftID.flatMap({ shiftIndex[$0] }) {
-            HStack(spacing: 2) {
+            // 简化：小色点 + 班次名纯文本，无长条底色
+            HStack(spacing: 3) {
                 Circle()
                     .fill(Color(paletteHex: shift.colorHex))
                     .frame(width: 6, height: 6)
@@ -76,13 +72,6 @@ struct DayCellView: View {
                     .font(.system(size: 9))
                     .lineLimit(1)
             }
-            .padding(.horizontal, 4)
-            .padding(.vertical, 1.5)
-            .frame(maxWidth: .infinity)
-            .background(
-                Color(paletteHex: shift.colorHex).opacity(0.18),
-                in: Capsule()
-            )
         } else {
             // 班次已被删除的悬挂记录：灰色占位提示
             Text("—")

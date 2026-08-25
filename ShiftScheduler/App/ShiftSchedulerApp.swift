@@ -9,6 +9,8 @@ struct ShiftSchedulerApp: App {
     let container: ModelContainer
 
     init() {
+        // 全局外观：透明导航栏/TabBar，让壁纸层从根视图底层透出
+        UIAppearance.apply()
         // ContainerFactory.sharedContainer() 非 throwing（内部已含
         // App Group → 默认位置 → 纯内存 三级降级，任何情况都返回可用容器），
         // 直接调用即可，无需 do-catch/try。

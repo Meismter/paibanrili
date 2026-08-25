@@ -75,6 +75,7 @@ struct PreviewConfirmView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
     }
 
     /// <0.6 的条目整行黄色底（共享约定 #7）

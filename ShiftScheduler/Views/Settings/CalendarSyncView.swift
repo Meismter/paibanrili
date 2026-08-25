@@ -28,6 +28,7 @@ struct CalendarSyncView: View {
                 importSection
             }
         }
+        .scrollContentBackground(.hidden)
         .navigationTitle("日历同步")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { viewModel.refresh() }

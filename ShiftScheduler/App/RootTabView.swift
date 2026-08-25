@@ -23,8 +23,11 @@ struct RootTabView: View {
             WallpaperLayer(tab: tab)
                 .zIndex(0)
             content()
+                .id(selectedTab)
+                .transition(.opacity)
                 .zIndex(1)
         }
+        .animation(.easeInOut(duration: 0.25), value: selectedTab)
         .tag(tab)
         .tabItem {
             Label(title, systemImage: icon)

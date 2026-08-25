@@ -36,6 +36,7 @@ struct ShiftEditView: View {
                         .foregroundStyle(.red)
                 }
             }
+            .scrollContentBackground(.hidden)
             .navigationTitle(existing == nil ? "新建班次" : "编辑班次")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

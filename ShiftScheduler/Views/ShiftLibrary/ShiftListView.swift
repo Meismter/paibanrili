@@ -123,5 +123,6 @@ struct ShiftListView: View {
         }
         .padding(14)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
     }
 }

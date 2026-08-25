@@ -111,6 +111,7 @@ struct MonthCalendarView: View {
         .padding(.vertical, 10)
         .padding(.horizontal, 4)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
         .padding(.horizontal, 8)
     }
 
@@ -173,6 +174,7 @@ struct MonthCalendarView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
         .padding(.horizontal)
         .padding(.bottom, 6)
     }
