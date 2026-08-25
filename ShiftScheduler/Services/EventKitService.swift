@@ -60,12 +60,12 @@ final class EventKitService {
         let start = calendar.date(byAdding: .year, value: -2, to: now) ?? now
         let end = calendar.date(byAdding: .year, value: 2, to: now) ?? now
 
-        let predicate = store.predicateForEvents(withStart: start,
-                                                 withEnd: end,
-                                                 matching: NSPredicate(
-                                                     format: "notes CONTAINS %@",
-                                                     SharedConstants.eventNotesPrefix))
-        let events = store.events(matching: predicate)
+        // EventKit 谓词不支持按 notes 过滤：先按时间窗口取事件，再在内存中按标识匹配
+        let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
+        let events = store.events(matching: predicate).filter { event in
+            guard let notes = event.notes else { return false }
+            return entryIDs.contains { notes.contains(SharedConstants.eventTag(for: $0)) }
+        }
 
         var result: [UUID: String] = [:]
         for event in events {
@@ -100,7 +100,7 @@ final class EventKitService {
                 // 删旧（存在即更新语义）
                 if let oldIdentifier = identifiers[entry.id],
                    let oldEvent = store.event(withIdentifier: oldIdentifier) {
-                    store.remove(oldEvent, span: .thisEvent)
+                    try store.remove(oldEvent, span: .thisEvent)
                 }
 
                 let event = try buildEvent(for: entry, in: targetCalendar, using: shiftIndex)
@@ -132,27 +132,28 @@ final class EventKitService {
                     to end: Date,
                     in calendar: EKCalendar? = nil) async -> [DraftEntry] {
         guard start < end else { return [] }
-        let predicate = store.predicateForEvents(withStart: start, withEnd: end)
+        let predicate = store.predicateForEvents(withStart: start, end: end, calendars: calendar.map { [$0] })
         let events = store.events(matching: predicate)
 
-        return events
+        let filtered = events
             .filter { !SharedConstants.isAppTagged(notes: $0.notes) }
             .filter { calendar == nil || $0.calendar == calendar }
             .sorted { $0.startDate < $1.startDate }
-            .map { event in
-                // 标题 "班次名 · HH:mm-HH:mm" → 取分隔符前的班次名作为识别标签
-                let title = event.title ?? ""
-                let label = title.components(separatedBy: SharedConstants.eventTitleSeparator).first ?? title
-                return DraftEntry(
-                    attributedDate: DateUtils.noon(of: event.startDate),
-                    memberName: SharedConstants.selfMemberName,
-                    shiftLabel: label,
-                    confidence: 0.75,
-                    rawLine: [title, event.notes ?? ""]
-                        .filter { !$0.isEmpty }
-                        .joined(separator: "\n")
-                )
-            }
+
+        return filtered.map { event in
+            // 标题 "班次名 · HH:mm-HH:mm" → 取分隔符前的班次名作为识别标签
+            let title = event.title ?? ""
+            let label = title.components(separatedBy: SharedConstants.eventTitleSeparator).first ?? title
+            return DraftEntry(
+                attributedDate: DateUtils.noon(of: event.startDate),
+                memberName: SharedConstants.selfMemberName,
+                shiftLabel: label,
+                confidence: 0.75,
+                rawLine: [title, event.notes ?? ""]
+                    .filter { !$0.isEmpty }
+                    .joined(separator: "\n")
+            )
+        }
     }
 
     // MARK: - Private

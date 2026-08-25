@@ -59,6 +59,10 @@ struct PlannedDay: Identifiable, Hashable, Sendable {
 /// 1. `computePlan` 纯计算预览，不触碰数据库；
 /// 2. `applyRotation` 先对范围内存量做内存快照 → 批量写入；
 /// 3. `undo` 仅针对最近一次操作，按快照整体恢复。
+///
+/// 注：@MainActor —— 内部调用 WidgetRefresher.refreshAfterWrite 要求主线程隔离；
+/// 计算型成员（computePlan）仍可被任意上下文安全调用。
+@MainActor
 final class QuickScheduleService {
 
     /// 最近一次成功应用的操作 id（供 ViewModel 判断"可否撤销"）
@@ -198,6 +202,7 @@ final class QuickScheduleService {
                               from: Date,
                               to: Date,
                               context: ModelContext) throws -> [ScheduleEntry] {
+        // 捕获值：SwiftData #Predicate 内不可直接引用捕获的模型实例；此处 memberID 为函数参数值，可直接使用
         let predicate = #Predicate<ScheduleEntry> { $0.memberID == memberID }
         let descriptor = FetchDescriptor(predicate: predicate,
                                          sortBy: [SortDescriptor(\.attributedDate)])

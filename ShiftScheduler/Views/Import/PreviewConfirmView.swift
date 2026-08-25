@@ -181,6 +181,7 @@ private struct DraftRow: View {
 
     // MARK: - 子元素
 
+    @ViewBuilder
     private var confidenceIcon: some View {
         switch draft.confidenceLevel {
         case .autoConfirm:

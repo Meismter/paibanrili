@@ -94,7 +94,7 @@ struct ImportSourceView: View {
         }
         .sheet(isPresented: $showPreview) {
             NavigationStack {
-                PreviewConfirmView(viewModel: viewModel) {
+                PreviewConfirmView(viewModel: viewModel) { _ in
                     showPreview = false
                 } onFailure: { message in
                     showPreview = false

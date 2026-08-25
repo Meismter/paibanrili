@@ -20,7 +20,8 @@ final class ImportViewModel {
     private(set) var isParsing = false
 
     /// 预览修正用的可变草稿列表（解析结果的副本，逐条可改）
-    private(set) var drafts: [DraftEntry] = []
+    /// 注意：需对外可写，供预览页 `ForEach($viewModel.drafts)` 绑定编辑。
+    var drafts: [DraftEntry] = []
 
     /// 无法解析行的汇总提示
     private(set) var warnings: [String] = []
@@ -135,7 +136,8 @@ final class ImportViewModel {
 
             // 3) upsert：同成员同归属日覆盖
             let day = DateUtils.noon(of: draft.attributedDate)
-            let predicate = #Predicate<ScheduleEntry> { $0.memberID == member.id }
+            let memberID = member.id // 捕获值：SwiftData #Predicate 内不可直接引用模型实例属性
+            let predicate = #Predicate<ScheduleEntry> { $0.memberID == memberID }
             let existing = ((try? context.fetch(FetchDescriptor(predicate: predicate))) ?? [])
                 .filter { $0.attributedDate == day }
             existing.forEach { context.delete($0) }

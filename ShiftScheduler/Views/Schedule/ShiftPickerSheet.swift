@@ -21,26 +21,12 @@ struct ShiftPickerSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("\(day.chineseDayTitle) · \(member.name)") {
+                Section(header: headerTitle) {
                     ForEach(shifts) { shift in
                         Button {
                             assign(shift)
                         } label: {
-                            HStack(spacing: 10) {
-                                Circle()
-                                    .fill(Color(paletteHex: shift.colorHex))
-                                    .frame(width: 12, height: 12)
-                                Text(shift.name)
-                                Spacer()
-                                Text(shift.timeRangeText)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                if existingEntry?.shiftID == shift.id {
-                                    Image(systemName: "checkmark")
-                                        .font(.caption)
-                                        .foregroundStyle(.accent)
-                                }
-                            }
+                            shiftRow(shift)
                         }
                     }
                 }
@@ -62,6 +48,30 @@ struct ShiftPickerSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+
+    /// 分区标题（提取为存储属性，避免类型检查器在 body 中反复推导插值）
+    private var headerTitle: Text {
+        Text("\(day.chineseDayTitle) · \(member.name)")
+    }
+
+    /// 单行班次行（拆分为独立方法，缓解类型检查超时）
+    private func shiftRow(_ shift: ShiftDefinition) -> some View {
+        HStack(spacing: 10) {
+            Circle()
+                .fill(Color(paletteHex: shift.colorHex))
+                .frame(width: 12, height: 12)
+            Text(shift.name)
+            Spacer()
+            Text(shift.timeRangeText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if existingEntry?.shiftID == shift.id {
+                Image(systemName: "checkmark")
+                    .font(.caption)
+                    .foregroundStyle(.accent)
+            }
+        }
     }
 
     // MARK: - 动作

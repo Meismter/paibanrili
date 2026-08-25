@@ -31,17 +31,17 @@ final class ScheduleEntry {
     /// 创建时间
     var createdAt: Date
 
-    /// 主初始化器（类图 init(memberID:shift:attributedDate:)）
+    /// 便利初始化器（类图 init(memberID:shift:attributedDate:)）
     /// - Parameters:
     ///   - memberID: 成员 ID
     ///   - shift: 班次定义对象（取其 id 关联）
     ///   - attributedDate: 任意表示归属日的时刻，内部归一化为该日 12:00
-    init(memberID: UUID,
-         shift: ShiftDefinition?,
-         attributedDate: Date,
-         note: String? = nil,
-         id: UUID = UUID(),
-         createdAt: Date = .now) {
+    convenience init(memberID: UUID,
+                     shift: ShiftDefinition?,
+                     attributedDate: Date,
+                     note: String? = nil,
+                     id: UUID = UUID(),
+                     createdAt: Date = .now) {
         self.init(memberID: memberID,
                   shiftID: shift?.id,
                   attributedDate: attributedDate,

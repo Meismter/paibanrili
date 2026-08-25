@@ -12,17 +12,20 @@ final class Member {
     var isSelf: Bool
     /// 成员标识色 "#RRGGBB"（可空；空表示使用系统默认色）。
     var colorHex: String?
+    /// 创建时间（成员列表排序依据）。
+    var createdAt: Date
 
-    init(id: UUID = UUID(), name: String, isSelf: Bool = false, colorHex: String? = nil) {
+    init(id: UUID = UUID(), name: String, isSelf: Bool = false, colorHex: String? = nil, createdAt: Date = .now) {
         self.id = id
         self.name = name
         self.isSelf = isSelf
         self.colorHex = colorHex
+        self.createdAt = createdAt
     }
 
     /// 首次启动创建的默认"我自己"成员。
     static func makeDefaultSelf() -> Member {
-        Member(name: "我", isSelf: true, colorHex: Theme.palette[7]) // 蓝 #1E88E5
+        Member(name: "我", isSelf: true, colorHex: Theme.palette[7].hex) // 蓝 #1E88E5
     }
 
     /// 类图约定的调用名（makeDefaultSelf 的别名，唯一定义委托）。

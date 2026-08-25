@@ -14,10 +14,10 @@ final class QuickScheduleViewModel {
     var selectedMemberID: UUID?
 
     /// 范围起始日（默认当月 1 日正午）
-    var rangeStart: Date = Self.defaultMonthStart()
+    var rangeStart: Date = QuickScheduleViewModel.defaultMonthStart()
 
     /// 天数（默认当月天数）
-    var numberOfDays: Int = Self.defaultDaysInMonth()
+    var numberOfDays: Int = QuickScheduleViewModel.defaultDaysInMonth()
 
     /// 轮转序列（ShiftDefinition.id 循环填充）
     var pattern: [UUID] = []

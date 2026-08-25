@@ -127,7 +127,8 @@ final class CalendarViewModel {
                             shift: ShiftDefinition?,
                             context: ModelContext) throws {
         let dayNoon = DateUtils.noon(of: day)
-        let predicate = #Predicate<ScheduleEntry> { $0.memberID == member.id }
+        let memberID = member.id // 捕获值：SwiftData #Predicate 内不可直接引用模型实例属性
+        let predicate = #Predicate<ScheduleEntry> { $0.memberID == memberID }
         let existing = ((try? context.fetch(FetchDescriptor(predicate: predicate))) ?? [])
             .filter { $0.attributedDate == dayNoon }
         existing.forEach { context.delete($0) }

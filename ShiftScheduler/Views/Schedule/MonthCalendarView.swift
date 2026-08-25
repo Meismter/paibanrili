@@ -79,9 +79,10 @@ struct MonthCalendarView: View {
         .sheet(item: $pickedDay) { picked in
             ShiftPickerSheet(day: picked.id,
                              member: viewModel.currentMember ?? Member.selfMember(),
-                             existingEntry: picked.entry) {
+                             existingEntry: picked.entry,
+                             onDone: {
                 viewModel.loadMonthEntries(context: modelContext)
-            }
+            })
         }
     }
 
