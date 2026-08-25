@@ -60,6 +60,7 @@ struct ShiftPickerSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .presentationBackground(.ultraThinMaterial)
     }
 
     /// 分区标题（提取为存储属性，避免类型检查器在 body 中反复推导插值）

@@ -101,65 +101,116 @@ final class WallpaperManager {
     private(set) var opacities: [WallpaperTab: Double] = [:]
     private(set) var scales: [WallpaperTab: Double] = [:]
     private var photoCache: [WallpaperTab: UIImage] = [:]
+    /// 强制刷新信号：任何配置写入后 +1，供 UI 建立依赖与过渡动画
+    private(set) var revision = 0
+    /// 内存态是否已从 UserDefaults 恢复（惰性一次，首次访问时）
+    private var hasLoaded = false
+
+    // MARK: - 持久化恢复
+
+    /// 首次访问任何配置前，从 UserDefaults 恢复内存态（App 重启后设置不丢失）。
+    /// 纯 getter 读 UserDefaults 无副作用；在全部 getter/setter 入口调用。
+    private func ensureLoaded() {
+        guard !hasLoaded else { return }
+        hasLoaded = true
+        let defaults = UserDefaults.standard
+        for tab in WallpaperTab.allCases {
+            if defaults.object(forKey: idKey(tab)) != nil {
+                ids[tab] = defaults.integer(forKey: idKey(tab))
+            }
+            if defaults.object(forKey: opacityKey(tab)) != nil {
+                opacities[tab] = defaults.double(forKey: opacityKey(tab))
+            }
+            if defaults.object(forKey: scaleKey(tab)) != nil {
+                scales[tab] = defaults.double(forKey: scaleKey(tab))
+            }
+        }
+    }
 
     // MARK: - 读取
 
     /// 选择 id：0=默认，1...=内置，-1=相册图片
     func selectionID(for tab: WallpaperTab) -> Int {
-        ids[tab] ?? 0
+        ensureLoaded()
+        return ids[tab] ?? 0
     }
 
     func opacity(for tab: WallpaperTab) -> Double {
-        opacities[tab] ?? 1.0
+        ensureLoaded()
+        return opacities[tab] ?? 1.0
     }
 
     func scale(for tab: WallpaperTab) -> Double {
-        scales[tab] ?? 1.0
+        ensureLoaded()
+        return scales[tab] ?? 1.0
     }
 
     /// 相册图片（懒加载磁盘缓存）
     func photoImage(for tab: WallpaperTab) -> UIImage? {
+        ensureLoaded()
         if let image = photoCache[tab] { return image }
-        guard let data = try? Data(contentsOf: photoURL(for: tab)),
-              let image = UIImage(data: data) else { return nil }
-        photoCache[tab] = image
-        return image
+        let url = photoURL(for: tab)
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        do {
+            let data = try Data(contentsOf: url)
+            guard let image = UIImage(data: data) else {
+                NSLog("[Wallpaper] 相册图解码失败: \(tab.rawValue)")
+                return nil
+            }
+            photoCache[tab] = image
+            return image
+        } catch {
+            NSLog("[Wallpaper] 相册图读取失败: \(error.localizedDescription)")
+            return nil
+        }
     }
 
     // MARK: - 写入
 
     func setSelectionID(_ id: Int, for tab: WallpaperTab) {
+        ensureLoaded()
         ids[tab] = id
+        revision += 1
         UserDefaults.standard.set(id, forKey: idKey(tab))
     }
 
     func setOpacity(_ value: Double, for tab: WallpaperTab) {
+        ensureLoaded()
         opacities[tab] = value
+        revision += 1
         UserDefaults.standard.set(value, forKey: opacityKey(tab))
     }
 
     func setScale(_ value: Double, for tab: WallpaperTab) {
+        ensureLoaded()
         scales[tab] = value
+        revision += 1
         UserDefaults.standard.set(value, forKey: scaleKey(tab))
     }
 
     /// 保存相册图片到 Documents/Wallpapers/<tab>.jpg 并把选择切到相册
     func setPhoto(_ image: UIImage, for tab: WallpaperTab) {
-        guard let data = image.jpegData(compressionQuality: 0.85) else { return }
+        ensureLoaded()
+        guard let data = image.jpegData(compressionQuality: 0.85) else {
+            NSLog("[Wallpaper] 相册图 JPEG 编码失败: \(tab.rawValue)")
+            return
+        }
         do {
             let url = photoURL(for: tab)
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
                                                     withIntermediateDirectories: true)
             try data.write(to: url, options: .atomic)
             photoCache[tab] = image
+            revision += 1
             setSelectionID(-1, for: tab)
         } catch {
-            // 写入失败：保持原选择不变
+            NSLog("[Wallpaper] 保存失败: \(error.localizedDescription)")
         }
     }
 
     /// 恢复默认：无壁纸 + 全透明 + 1.0 缩放，并清掉相册图片
     func reset(for tab: WallpaperTab) {
+        ensureLoaded()
         setSelectionID(0, for: tab)
         setOpacity(1.0, for: tab)
         setScale(1.0, for: tab)
@@ -182,12 +233,15 @@ struct WallpaperLayer: View {
     @State private var manager = WallpaperManager.shared
 
     var body: some View {
+        // 建立对 revision 的依赖：任何配置写入都会强制本视图刷新并触发过渡动画
+        let _ = manager.revision
         GeometryReader { geo in
             ZStack {
                 content
                     .frame(width: geo.size.width, height: geo.size.height)
                     .clipped()
                     .opacity(manager.opacity(for: tab))
+                    .animation(.easeInOut(duration: 0.35), value: manager.revision)
             }
         }
         .ignoresSafeArea()

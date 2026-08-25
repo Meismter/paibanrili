@@ -58,9 +58,11 @@ struct MonthCalendarView: View {
         }
         .sheet(isPresented: $showQuickSchedule) {
             QuickScheduleView()
+                .presentationBackground(.ultraThinMaterial)
         }
         .sheet(isPresented: $showImport) {
             ImportSourceView()
+                .presentationBackground(.ultraThinMaterial)
         }
         .sheet(item: $pickedDay) { picked in
             ShiftPickerSheet(day: picked.id,
