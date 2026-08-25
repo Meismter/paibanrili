@@ -40,9 +40,6 @@ struct ShiftListView: View {
                     }
                     .accessibilityLabel("新建班次")
                 }
-                ToolbarItem(placement: .cancellationAction) {
-                    EditButton()
-                }
             }
             .sheet(isPresented: $showNewSheet) {
                 ShiftEditView(existing: nil)
@@ -125,5 +122,7 @@ struct ShiftListView: View {
         .padding(14)
         .glassSurface(cornerRadius: 14)
         .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
+        .contentShape(Rectangle())
+        .onTapGesture { editingShift = shift }
     }
 }
