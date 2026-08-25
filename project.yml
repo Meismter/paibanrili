@@ -19,6 +19,10 @@ targets:
         product: ZIPFoundation
     packages:
       - ZIPFoundation
+    settings:
+      base:
+        # XcodeGen 自动从 sources 中的 .xcassets 编译 AppIcon；这里显式声明以确保
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     entitlements:
       path: ShiftScheduler/Support/ShiftScheduler.entitlements
       properties:

@@ -12,6 +12,16 @@ struct SettingsView: View {
             Form {
                 Section {
                     NavigationLink {
+                        WallpaperSettingsView()
+                    } label: {
+                        Label("壁纸设置", systemImage: "photo.on.rectangle.angled")
+                    }
+                } header: {
+                    Text("外观")
+                }
+
+                Section {
+                    NavigationLink {
                         CalendarSyncView()
                     } label: {
                         Label("日历同步", systemImage: "calendar.badge.checkmark")
@@ -52,6 +62,8 @@ struct SettingsView: View {
                     Text("关于")
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(.ultraThinMaterial)
             .navigationTitle("设置")
         }
     }

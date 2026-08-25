@@ -16,7 +16,9 @@ struct XlsxExtractor: TextExtracting {
     private static let sheetPath = "xl/worksheets/sheet1.xml"
 
     func extract(data: Data) throws -> ExtractionOutput {
-        guard let archive = Archive(data: data, accessMode: .read) else {
+        // ZIPFoundation ≥0.9.17 的 Archive 初始化器为 throwing（非 failable），
+        // 用 try? 保持原 guard-let 语义：非法容器 → invalidContainer。
+        guard let archive = try? Archive(data: data, accessMode: .read) else {
             throw ExtractionError.invalidContainer
         }
 

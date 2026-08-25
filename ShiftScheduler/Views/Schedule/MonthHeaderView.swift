@@ -33,6 +33,9 @@ struct MonthHeaderView: View {
             memberMenu
         }
         .padding(.horizontal)
+        .padding(.vertical, 6)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .padding(.horizontal, 8)
     }
 
     private var memberMenu: some View {

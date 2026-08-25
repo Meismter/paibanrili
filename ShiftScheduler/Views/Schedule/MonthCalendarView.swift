@@ -32,7 +32,7 @@ struct MonthCalendarView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 8) {
+            VStack(spacing: 10) {
                 MonthHeaderView(monthTitle: viewModel.monthTitle,
                                 members: viewModel.members,
                                 currentMember: viewModel.currentMember,
@@ -42,21 +42,7 @@ struct MonthCalendarView: View {
                                     viewModel.select(memberID: member.id, context: modelContext)
                                 })
 
-                weekdayHeader
-
-                ScrollView {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 7),
-                              spacing: 2) {
-                        ForEach(Array(cellItems.enumerated()), id: \.offset) { _, item in
-                            cell(for: item)
-                        }
-                    }
-                    .padding(.horizontal, 6)
-
-                    if !viewModel.conflictsThisMonth().isEmpty {
-                        conflictBanner
-                    }
-                }
+                calendarCard
 
                 quickActionBar
             }
@@ -98,7 +84,32 @@ struct MonthCalendarView: View {
                     .frame(maxWidth: .infinity)
             }
         }
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 8)
+    }
+
+    /// 月历卡片区域（批次 A：整体玻璃浮层，网格 + 星期头内嵌其中）
+    private var calendarCard: some View {
+        VStack(spacing: 8) {
+            weekdayHeader
+
+            ScrollView {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7),
+                          spacing: 4) {
+                    ForEach(Array(cellItems.enumerated()), id: \.offset) { _, item in
+                        cell(for: item)
+                    }
+                }
+                .padding(.horizontal, 8)
+
+                if !viewModel.conflictsThisMonth().isEmpty {
+                    conflictBanner
+                }
+            }
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 4)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal, 8)
     }
 
     private func cell(for item: Date?) -> some View {
@@ -136,7 +147,7 @@ struct MonthCalendarView: View {
             .padding(.horizontal)
     }
 
-    /// 底部快捷操作条：⚡快速排班 / ⬆️导入（任务清单 #9）
+    /// 底部快捷操作条：⚡快速排班 / ⬆️导入（任务清单 #9；批次 A 改为玻璃浮层）
     private var quickActionBar: some View {
         HStack(spacing: 12) {
             Button {
@@ -157,6 +168,9 @@ struct MonthCalendarView: View {
             }
             .buttonStyle(.bordered)
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
         .padding(.horizontal)
         .padding(.bottom, 6)
     }

@@ -23,9 +23,12 @@ struct ShiftListView: View {
                 ForEach(shifts) { shift in
                     card(for: shift)
                         .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                 }
             }
             .listStyle(.plain)
+            .scrollContentBackground(.hidden)
             .navigationTitle("班次")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -118,6 +121,7 @@ struct ShiftListView: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.vertical, 4)
+        .padding(14)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
     }
 }

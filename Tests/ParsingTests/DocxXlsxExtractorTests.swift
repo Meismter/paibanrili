@@ -22,7 +22,7 @@ final class DocxXlsxExtractorTests: XCTestCase {
             let data = Data(content.utf8)
             try archive.addEntry(with: path,
                                  type: .file,
-                                 uncompressedSize: data.count) { position, size in
+                                 uncompressedSize: Int64(data.count)) { position, size in
                 // ZIPFoundation provider 闭包签名：(Int64, Int) throws -> Data，需先收窄为 Int
                 let start = Int(position)
                 return data.subdata(in: start..<min(start + size, data.count))
