@@ -50,9 +50,6 @@ struct MonthCalendarView: View {
             .navigationBarTitleDisplayMode(.inline)
         }
         .onAppear { viewModel.load(context: modelContext) }
-        .onReceive(NotificationCenter.default.publisher(for: .scheduleTabSelected)) { _ in
-            viewModel.load(context: modelContext)
-        }
         .onChange(of: showQuickSchedule) { _, showing in
             if !showing { viewModel.loadMonthEntries(context: modelContext) }
         }

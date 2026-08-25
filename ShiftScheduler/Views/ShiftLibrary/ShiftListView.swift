@@ -7,7 +7,6 @@ struct ShiftListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \ShiftDefinition.sortOrder) private var shifts: [ShiftDefinition]
     @State private var viewModel = ShiftLibraryViewModel()
-    @State private var editingShift: ShiftDefinition?
     @State private var showNewSheet = false
     /// 待删除确认的班次
     @State private var deleting: ShiftDefinition?
@@ -43,9 +42,6 @@ struct ShiftListView: View {
             }
             .sheet(isPresented: $showNewSheet) {
                 ShiftEditView(existing: nil)
-            }
-            .sheet(item: $editingShift) { shift in
-                ShiftEditView(existing: shift)
             }
             .confirmationDialog("删除「\(deleting?.name ?? "")」？",
                                 isPresented: .init(get: { deleting != nil },
@@ -103,11 +99,6 @@ struct ShiftListView: View {
             Spacer()
 
             Menu {
-                Button {
-                    editingShift = shift
-                } label: {
-                    Label("编辑", systemImage: "pencil")
-                }
                 Button(role: .destructive) {
                     deleting = shift
                 } label: {
@@ -122,7 +113,5 @@ struct ShiftListView: View {
         .padding(14)
         .glassSurface(cornerRadius: 14)
         .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
-        .contentShape(Rectangle())
-        .onTapGesture { editingShift = shift }
     }
 }

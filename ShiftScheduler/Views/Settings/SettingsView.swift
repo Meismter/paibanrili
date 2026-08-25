@@ -12,17 +12,6 @@ struct SettingsView: View {
             Form {
                 Section {
                     NavigationLink {
-                        WallpaperSettingsView()
-                    } label: {
-                        Label("壁纸设置", systemImage: "photo.on.rectangle.angled")
-                    }
-                    .listRowBackground(Color.clear)
-                } header: {
-                    Text("外观")
-                }
-
-                Section {
-                    NavigationLink {
                         MemberManagementView()
                     } label: {
                         Label("成员管理", systemImage: "person.2")
