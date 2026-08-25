@@ -28,5 +28,7 @@ enum UIAppearance {
         UITabBar.appearance().standardAppearance = tabAppearance
         UITabBar.appearance().scrollEdgeAppearance = tabAppearance
         UITabBar.appearance().isTranslucent = true
+        // 保险：显式将 TabBar 背景色置透明，避免宿主容器不透明背景盖住根底层壁纸
+        UITabBar.appearance().barTintColor = .clear
     }
 }

@@ -23,6 +23,17 @@ struct SettingsView: View {
 
                 Section {
                     NavigationLink {
+                        MemberManagementView()
+                    } label: {
+                        Label("成员管理", systemImage: "person.2")
+                    }
+                    .listRowBackground(Color.clear)
+                } header: {
+                    Text("成员")
+                }
+
+                Section {
+                    NavigationLink {
                         CalendarSyncView()
                     } label: {
                         Label("日历同步", systemImage: "calendar.badge.checkmark")
@@ -60,7 +71,8 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    LabeledContent("版本", value: "1.0")
+                    LabeledContent("版本",
+                                   value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.6")
                         .listRowBackground(Color.clear)
                     LabeledContent("数据存储", value: "完全本地，不上传任何数据")
                         .listRowBackground(Color.clear)

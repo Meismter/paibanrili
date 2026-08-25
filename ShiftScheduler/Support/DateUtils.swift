@@ -178,10 +178,12 @@ enum DateUtils {
         }
     }
 
-    /// 按每周起始日旋转的短星期标签，如周一开头 → ["一","二","三","四","五","六","日"]
+    /// 按每周起始日旋转的中文短星期标签，如周一开头 → ["一","二","三","四","五","六","日"]。
+    /// 不依赖系统语言环境的 veryShortWeekdaySymbols（英文下周六/周日同为 "S"，无法区分）。
     static func weekdaySymbols(firstWeekdayOfWeek: Int,
                                calendar: Calendar = .current) -> [String] {
-        let base = calendar.veryShortWeekdaySymbols // ["日","一","二",...]
+        // 基础序列（index 0=周日 ... 6=周六）：["日","一","二","三","四","五","六"]
+        let base = [1, 2, 3, 4, 5, 6, 7].map { chineseWeekday($0) }
         guard (1...7).contains(firstWeekdayOfWeek), base.count == 7 else { return base }
         let offset = firstWeekdayOfWeek - 1
         return Array(base[offset...] + base[..<offset])
