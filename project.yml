@@ -37,6 +37,10 @@ targets:
     sources:
       - ShiftWidget
       - SharedKit
+    # App Extension 的 bundle id 必须是主 App 的子域（Apple 强制规则）
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.local.ShiftScheduler.ShiftWidget
     entitlements:
       path: ShiftWidget/Support/ShiftWidget.entitlements
       properties:
