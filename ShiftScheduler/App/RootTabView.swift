@@ -40,7 +40,7 @@ struct RootTabView: View {
     private func tabContent<Content: View>(_ tab: WallpaperTab,
                                            @ViewBuilder content: () -> Content) -> some View {
         let isSelected = selectedTab == tab
-        content()
+        return content()
             .opacity(isSelected ? 1 : 0)
             .allowsHitTesting(isSelected)
             .accessibilityHidden(!isSelected)
