@@ -1,4 +1,4 @@
-name: shift_scheduler_ios
+name: ShiftScheduler
 options:
   bundleIdPrefix: com.local
   deploymentTarget:
