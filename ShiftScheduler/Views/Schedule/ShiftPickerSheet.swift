@@ -69,7 +69,7 @@ struct ShiftPickerSheet: View {
             if existingEntry?.shiftID == shift.id {
                 Image(systemName: "checkmark")
                     .font(.caption)
-                    .foregroundStyle(.accent)
+                    .foregroundStyle(Color.accentColor)
             }
         }
     }

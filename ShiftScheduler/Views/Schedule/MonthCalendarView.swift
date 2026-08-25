@@ -77,12 +77,12 @@ struct MonthCalendarView: View {
             ImportSourceView()
         }
         .sheet(item: $pickedDay) { picked in
-            ShiftPickerSheet(day: picked.id,
-                             member: viewModel.currentMember ?? Member.selfMember(),
-                             existingEntry: picked.entry,
-                             onDone: {
+            ShiftPickerSheet(onDone: {
                 viewModel.loadMonthEntries(context: modelContext)
-            })
+            },
+                             day: picked.id,
+                             member: viewModel.currentMember ?? Member.selfMember(),
+                             existingEntry: picked.entry)
         }
     }
 
