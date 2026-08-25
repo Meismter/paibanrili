@@ -18,6 +18,18 @@ struct ShiftPickerSheet: View {
     /// 该日既有排班（用于勾选标记）；nil 表示当日无排班
     var existingEntry: ScheduleEntry? = nil
 
+    /// 显式 init：避免 @Query 属性包装器在自动 memberwise init 中产生隐藏的 `_shifts` 参数
+    init(day: Date,
+         member: Member,
+         onDone: @escaping () -> Void = {},
+         existingEntry: ScheduleEntry? = nil) {
+        self.day = day
+        self.member = member
+        self.onDone = onDone
+        self.existingEntry = existingEntry
+        self._shifts = Query(sort: \ShiftDefinition.sortOrder)
+    }
+
     var body: some View {
         NavigationStack {
             List {
