@@ -9,14 +9,14 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 30
 
     steps:
-      - name: [FINGERPRINT_V3] Checkout
+      - name: "[FINGERPRINT_V3] Checkout"
         uses: actions/checkout@v4
 
-      - name: [FINGERPRINT_V3] 显式切到工作目录
+      - name: "[FINGERPRINT_V3] 显式切到工作目录"
         run: |
           echo "FINGERPRINT_V3_RUNNING"
           echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
@@ -24,10 +24,10 @@ jobs:
           pwd
           ls -la
 
-      - name: [FINGERPRINT_V3] Install XcodeGen
+      - name: "[FINGERPRINT_V3] Install XcodeGen"
         run: brew install xcodegen
 
-      - name: [FINGERPRINT_V3] Generate Xcode project
+      - name: "[FINGERPRINT_V3] Generate Xcode project"
         run: |
           cd "$GITHUB_WORKSPACE"
           xcodegen generate
@@ -36,7 +36,7 @@ jobs:
           echo "---- 找所有 xcodeproj ----"
           find . -name "*.xcodeproj" -not -path "*/build/*" 2>/dev/null
 
-      - name: [FINGERPRINT_V3] Build app (auto-detect project)
+      - name: "[FINGERPRINT_V3] Build app (auto-detect project)"
         # 不写死工程名，自动从 .xcodeproj 文件推断
         run: |
           cd "$GITHUB_WORKSPACE"
@@ -57,7 +57,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
-      - name: [FINGERPRINT_V3] Package unsigned IPA
+      - name: "[FINGERPRINT_V3] Package unsigned IPA"
         run: |
           cd "$GITHUB_WORKSPACE/build/Build/Products/Release-iphoneos"
           mkdir -p Payload
@@ -65,7 +65,7 @@ jobs:
           zip -r ShiftScheduler-unsigned.ipa Payload
           ls -lh ShiftScheduler-unsigned.ipa
 
-      - name: [FINGERPRINT_V3] Upload IPA artifact
+      - name: "[FINGERPRINT_V3] Upload IPA artifact"
         uses: actions/upload-artifact@v4
         with:
           name: ShiftScheduler-unsigned-ipa
