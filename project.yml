@@ -1,0 +1,65 @@
+name: shift_scheduler_ios
+options:
+  bundleIdPrefix: com.local
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+targets:
+  ShiftScheduler:
+    type: application
+    platform: iOS
+    sources:
+      - ShiftScheduler
+      - SharedKit
+    dependencies:
+      - target: ShiftWidget
+    packages:
+      - ZIPFoundation
+    entitlements:
+      path: ShiftScheduler/Support/ShiftScheduler.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.shiftscheduler.shared
+    info:
+      path: ShiftScheduler/Info.plist
+      properties:
+        CFBundleDisplayName: 排班助手
+        NSCalendarsFullAccessUsageDescription: 需要完整日历访问权限，用于将您的排班写入系统日历并读取已有计划。
+        NSCalendarsWriteOnlyAccessUsageDescription: 需要日历写入权限，用于将您的排班写入系统日历。
+        UILaunchScreen: {}
+  ShiftWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - ShiftWidget
+      - SharedKit
+    entitlements:
+      path: ShiftWidget/Support/ShiftWidget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.shiftscheduler.shared
+    info:
+      path: ShiftWidget/Info.plist
+      properties:
+        CFBundleDisplayName: 排班小组件
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+  ShiftSchedulerTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests/ParsingTests
+    dependencies:
+      - target: ShiftScheduler
+      - package: ZIPFoundation
+        product: ZIPFoundation
+    settings:
+      base:
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/ShiftScheduler.app/ShiftScheduler
+        BUNDLE_LOADER: $(TEST_HOST)
+packages:
+  ZIPFoundation:
+    url: https://github.com/weichsel/ZIPFoundation
+    from: "0.9.19"

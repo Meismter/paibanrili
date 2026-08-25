@@ -1,0 +1,50 @@
+# iOS 排班应用 · GitHub Actions 云端打包（无需 Mac）
+# 流程：macOS 云虚拟机 → XcodeGen 生成工程 → 编译未签名 IPA → 上传产物
+name: Build IPA
+
+on:
+  workflow_dispatch:          # 手动触发：仓库 Actions 页面点 "Run workflow"
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-14          # GitHub 免费 macOS 虚拟机（含 Xcode 15+）
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build app (unsigned)
+        # CODE_SIGNING_ALLOWED=NO 跳过签名，避免需要证书
+        run: |
+          xcodebuild \
+            -project ShiftScheduler.xcodeproj \
+            -scheme ShiftScheduler \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package unsigned IPA
+        run: |
+          cd build/Build/Products/Release-iphoneos
+          mkdir -p Payload
+          cp -R ShiftScheduler.app Payload/
+          zip -r ShiftScheduler-unsigned.ipa Payload
+          ls -lh ShiftScheduler-unsigned.ipa
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ShiftScheduler-unsigned-ipa
+          path: build/Build/Products/Release-iphoneos/ShiftScheduler-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 30

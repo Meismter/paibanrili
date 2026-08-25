@@ -1,0 +1,12 @@
+# Xcode / 构建产物
+build/
+DerivedData/
+*.xcodeproj
+xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# macOS
+.DS_Store
+
+# 其他
+*.ipa
