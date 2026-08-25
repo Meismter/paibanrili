@@ -19,6 +19,7 @@ struct ShiftListView: View {
                     Text("暂无班次，点击右上角 + 创建")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                        .listRowBackground(Color.clear)
                 }
                 ForEach(shifts) { shift in
                     card(for: shift)
@@ -122,7 +123,7 @@ struct ShiftListView: View {
             }
         }
         .padding(14)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .glassSurface(cornerRadius: 14)
         .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
     }
 }

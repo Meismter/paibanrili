@@ -24,6 +24,7 @@ struct ShiftEditView: View {
             Form {
                 Section("名称") {
                     TextField("如：早班 / 夜班", text: $name)
+                        .listRowBackground(Color.clear)
                 }
 
                 timeSection
@@ -34,8 +35,10 @@ struct ShiftEditView: View {
                     Text(error)
                         .font(.footnote)
                         .foregroundStyle(.red)
+                        .listRowBackground(Color.clear)
                 }
             }
+            .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .navigationTitle(existing == nil ? "新建班次" : "编辑班次")
             .navigationBarTitleDisplayMode(.inline)
@@ -62,18 +65,21 @@ struct ShiftEditView: View {
                     Text(option.label).tag(option.minutes)
                 }
             }
+            .listRowBackground(Color.clear)
 
             Picker("结束", selection: $endMinutes) {
                 ForEach(TimeOption.allIncludingMidnight, id: \.minutes) { option in
                     Text(option.label).tag(option.minutes)
                 }
             }
+            .listRowBackground(Color.clear)
 
             LabeledContent("预览") {
                 Text(previewText)
                     .font(.callout.monospaced())
                     .foregroundStyle(.secondary)
             }
+            .listRowBackground(Color.clear)
         } header: {
             Text("时间段")
         } footer: {
@@ -84,6 +90,7 @@ struct ShiftEditView: View {
     private var colorSection: some View {
         Section("颜色") {
             ColorPaletteView(selectedHex: $colorHex)
+                .listRowBackground(Color.clear)
         }
     }
 
@@ -91,6 +98,7 @@ struct ShiftEditView: View {
         Section {
             TextField("早, 早班, 白班, D", text: $keywordsText)
                 .autocorrectionDisabled()
+                .listRowBackground(Color.clear)
         } header: {
             Text("识别关键词别名")
         } footer: {

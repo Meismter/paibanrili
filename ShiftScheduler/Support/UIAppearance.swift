@@ -17,6 +17,7 @@ enum UIAppearance {
         UINavigationBar.appearance().standardAppearance = navAppearance
         UINavigationBar.appearance().scrollEdgeAppearance = navAppearance
         UINavigationBar.appearance().compactAppearance = navAppearance
+        UINavigationBar.appearance().isTranslucent = true
 
         // TabBar：全透明背景，去掉顶部分隔线
         let tabAppearance = UITabBarAppearance()
@@ -26,5 +27,6 @@ enum UIAppearance {
         tabAppearance.shadowColor = .clear
         UITabBar.appearance().standardAppearance = tabAppearance
         UITabBar.appearance().scrollEdgeAppearance = tabAppearance
+        UITabBar.appearance().isTranslucent = true
     }
 }

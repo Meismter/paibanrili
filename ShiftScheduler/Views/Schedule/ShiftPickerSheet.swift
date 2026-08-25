@@ -40,6 +40,7 @@ struct ShiftPickerSheet: View {
                         } label: {
                             shiftRow(shift)
                         }
+                        .listRowBackground(Color.clear)
                     }
                 }
 
@@ -49,8 +50,10 @@ struct ShiftPickerSheet: View {
                     } label: {
                         Label("清除该日排班", systemImage: "trash")
                     }
+                    .listRowBackground(Color.clear)
                 }
             }
+            .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .navigationTitle("选择班次")
             .navigationBarTitleDisplayMode(.inline)

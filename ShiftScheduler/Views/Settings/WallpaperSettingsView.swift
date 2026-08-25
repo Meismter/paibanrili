@@ -14,19 +14,24 @@ struct WallpaperSettingsView: View {
             ForEach(WallpaperTab.allCases) { tab in
                 Section {
                     builtinGrid(for: tab)
+                        .listRowBackground(Color.clear)
                     PhotosPicker(selection: photoBinding(for: tab),
                                  matching: .images) {
                         Label("从相册选择图片", systemImage: "photo.on.rectangle")
                     }
+                    .listRowBackground(Color.clear)
                     controls(for: tab)
+                        .listRowBackground(Color.clear)
                     Button("恢复默认", role: .destructive) {
                         manager.reset(for: tab)
                     }
+                    .listRowBackground(Color.clear)
                 } header: {
                     Label(tab.displayName, systemImage: tab.iconName)
                 }
             }
         }
+        .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(.ultraThinMaterial)
         .navigationTitle("壁纸设置")

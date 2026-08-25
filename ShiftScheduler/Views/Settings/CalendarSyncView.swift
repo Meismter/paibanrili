@@ -28,6 +28,7 @@ struct CalendarSyncView: View {
                 importSection
             }
         }
+        .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .navigationTitle("日历同步")
         .navigationBarTitleDisplayMode(.inline)
@@ -67,6 +68,7 @@ struct CalendarSyncView: View {
                     .font(.footnote.bold())
                 }
             }
+            .listRowBackground(Color.clear)
         } header: {
             Text("日历权限")
         } footer: {
@@ -85,6 +87,7 @@ struct CalendarSyncView: View {
                         Text(calendar.title).tag(calendar.calendarIdentifier)
                     }
                 }
+                .listRowBackground(Color.clear)
             }
         }
     }
@@ -99,6 +102,7 @@ struct CalendarSyncView: View {
             } label: {
                 Label("同步本月到日历", systemImage: "arrow.up.circle.fill")
             }
+            .listRowBackground(Color.clear)
         } footer: {
             Text("以 App 数据为准：已存在的同标识事件会被删除重建，不会产生重复日程。")
         }
@@ -137,6 +141,7 @@ struct CalendarSyncView: View {
             } label: {
                 Label("从日历导入本月计划", systemImage: "arrow.down.circle")
             }
+            .listRowBackground(Color.clear)
         } footer: {
             Text("读取目标日历本月事件并转为草稿（本应用写入的标识事件会自动排除），确认后合并进排班。")
         }

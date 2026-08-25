@@ -16,6 +16,7 @@ struct SettingsView: View {
                     } label: {
                         Label("壁纸设置", systemImage: "photo.on.rectangle.angled")
                     }
+                    .listRowBackground(Color.clear)
                 } header: {
                     Text("外观")
                 }
@@ -26,6 +27,7 @@ struct SettingsView: View {
                     } label: {
                         Label("日历同步", systemImage: "calendar.badge.checkmark")
                     }
+                    .listRowBackground(Color.clear)
                 } header: {
                     Text("同步")
                 }
@@ -36,6 +38,7 @@ struct SettingsView: View {
                         Text("周一").tag(2)
                         Text("周六").tag(7)
                     }
+                    .listRowBackground(Color.clear)
                 } header: {
                     Text("日历偏好")
                 } footer: {
@@ -51,17 +54,21 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                     .padding(.vertical, 2)
+                    .listRowBackground(Color.clear)
                 } header: {
                     Text("小组件")
                 }
 
                 Section {
                     LabeledContent("版本", value: "1.0")
+                        .listRowBackground(Color.clear)
                     LabeledContent("数据存储", value: "完全本地，不上传任何数据")
+                        .listRowBackground(Color.clear)
                 } header: {
                     Text("关于")
                 }
             }
+            .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .background(.ultraThinMaterial)
             .navigationTitle("设置")

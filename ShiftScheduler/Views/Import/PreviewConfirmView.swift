@@ -74,7 +74,7 @@ struct PreviewConfirmView: View {
                 viewModel.removeDraft(at: offsets)
             }
         }
-        .listStyle(.insetGrouped)
+        .listStyle(.plain)
         .scrollContentBackground(.hidden)
     }
 

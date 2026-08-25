@@ -17,6 +17,7 @@ struct QuickScheduleView: View {
                 rotationSection
                 previewSection
             }
+            .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .navigationTitle("快速排班")
             .navigationBarTitleDisplayMode(.inline)
@@ -52,6 +53,7 @@ struct QuickScheduleView: View {
                     Text(member.name).tag(member.id as UUID?)
                 }
             }
+            .listRowBackground(Color.clear)
         }
     }
 
@@ -62,6 +64,7 @@ struct QuickScheduleView: View {
                        selection: $viewModel.rangeStart,
                        displayedComponents: .date)
                 .environment(\.locale, Locale(identifier: "zh_CN"))
+                .listRowBackground(Color.clear)
 
             Stepper(value: $viewModel.numberOfDays, in: 1...366) {
                 HStack {
@@ -71,13 +74,16 @@ struct QuickScheduleView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .listRowBackground(Color.clear)
 
             LabeledContent("结束于", value: viewModel.rangeEnd.chineseDayTitle)
+                .listRowBackground(Color.clear)
 
             Button("重置为当月整月") {
                 viewModel.resetToCurrentMonth()
             }
             .font(.footnote)
+            .listRowBackground(Color.clear)
         } header: {
             Text("日期范围")
         }
@@ -88,11 +94,13 @@ struct QuickScheduleView: View {
         Section {
             RotationEditorView(shifts: viewModel.shifts,
                                pattern: $viewModel.pattern)
+                .listRowBackground(Color.clear)
             if viewModel.pattern.isEmpty {
                 Button("使用默认四班倒（早→中→夜→休）") {
                     viewModel.useDefaultFourShiftRotation()
                 }
                 .font(.footnote)
+                .listRowBackground(Color.clear)
             }
         } header: {
             Text("轮转序列")
@@ -107,9 +115,11 @@ struct QuickScheduleView: View {
             } label: {
                 Label("生成预览（不写入）", systemImage: "eye")
             }
+            .listRowBackground(Color.clear)
 
             if !viewModel.plan.isEmpty {
                 previewGrid
+                    .listRowBackground(Color.clear)
 
                 Button {
                     _ = viewModel.apply(context: modelContext)
@@ -117,12 +127,14 @@ struct QuickScheduleView: View {
                     Label("应用到 \(viewModel.plan.count) 天", systemImage: "checkmark.circle.fill")
                         .bold()
                 }
+                .listRowBackground(Color.clear)
             }
 
             if let message = viewModel.lastMessage {
                 Text(message)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                    .listRowBackground(Color.clear)
             }
         } header: {
             Text("预览与应用")
