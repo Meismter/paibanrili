@@ -20,8 +20,11 @@ struct MonthCalendarView: View {
     @State private var showQuickSchedule = false
     @State private var showImport = false
 
-    /// 翻页索引：-1 上月 / 0 本月 / 1 下月（滑动后自动回中）
-    @State private var pageIndex = 0
+    /// 翻页标识：prev/current/next（物理分页滚动，回中无动画无闪烁）
+    private enum PageID: Hashable {
+        case prev, current, next
+    }
+    @State private var scrollID: PageID? = .current
 
     /// sheet(item:) 需要可标识包装
     private struct PickedDay: Identifiable {
@@ -108,34 +111,45 @@ struct MonthCalendarView: View {
 
     // MARK: - 滑动翻页
 
-    /// 横向滑动翻页：上/本/下三页，滑动后回中并切换真实月份
+    /// 横向翻页：物理分页滚动（跟手），上/本/下三页。
+    /// 滑到相邻页后：切换真实月份并把内容无动画回中（新月份已渲染，视觉无缝无闪烁）。
     private var monthPager: some View {
-        TabView(selection: $pageIndex) {
-            MonthGridPage(month: viewModel.displayedMonth.adding(months: -1),
-                          viewModel: viewModel,
-                          onSelectDay: selectDay,
-                          onEditNote: { noteDayRequest = NoteDayRequest(id: $0) })
-                .tag(-1)
+        ScrollView(.horizontal) {
+            LazyHStack(spacing: 0) {
+                MonthGridPage(month: viewModel.displayedMonth.adding(months: -1),
+                              viewModel: viewModel,
+                              onSelectDay: selectDay,
+                              onEditNote: { noteDayRequest = NoteDayRequest(id: $0) })
+                    .containerRelativeFrame(.horizontal)
+                    .id(PageID.prev)
 
-            MonthGridPage(month: viewModel.displayedMonth,
-                          viewModel: viewModel,
-                          onSelectDay: selectDay,
-                          onEditNote: { noteDayRequest = NoteDayRequest(id: $0) })
-                .tag(0)
+                MonthGridPage(month: viewModel.displayedMonth,
+                              viewModel: viewModel,
+                              onSelectDay: selectDay,
+                              onEditNote: { noteDayRequest = NoteDayRequest(id: $0) })
+                    .containerRelativeFrame(.horizontal)
+                    .id(PageID.current)
 
-            MonthGridPage(month: viewModel.displayedMonth.adding(months: 1),
-                          viewModel: viewModel,
-                          onSelectDay: selectDay,
-                          onEditNote: { noteDayRequest = NoteDayRequest(id: $0) })
-                .tag(1)
+                MonthGridPage(month: viewModel.displayedMonth.adding(months: 1),
+                              viewModel: viewModel,
+                              onSelectDay: selectDay,
+                              onEditNote: { noteDayRequest = NoteDayRequest(id: $0) })
+                    .containerRelativeFrame(.horizontal)
+                    .id(PageID.next)
+            }
+            .scrollTargetLayout()
         }
-        .tabViewStyle(.page(indexDisplayMode: .never))
-        .onChange(of: pageIndex) { _, newIndex in
-            guard newIndex != 0 else { return }
-            // 非线性动画：弹簧回中 + 月份数据切换，消除生硬跳变
-            withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
-                viewModel.changeMonth(by: newIndex, context: modelContext)
-                pageIndex = 0
+        .scrollTargetBehavior(.paging)
+        .scrollPosition(id: $scrollID)
+        .defaultScrollAnchor(.center)
+        .scrollIndicators(.hidden)
+        .onChange(of: scrollID) { _, newID in
+            guard let newID, newID != .current else { return }
+            let delta = newID == .prev ? -1 : 1
+            viewModel.changeMonth(by: delta, context: modelContext)
+            // 立即回中（不带动画）：新月份已在当前页渲染，视觉上无跳变、无末帧闪烁
+            withAnimation(nil) {
+                scrollID = .current
             }
         }
         .overlay(alignment: .bottomTrailing) {

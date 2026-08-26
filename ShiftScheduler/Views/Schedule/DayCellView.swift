@@ -3,9 +3,9 @@ import SwiftUI
 /// 日期格（R01 / 批次 A）：日期数字 + 彩色班次胶囊（最多展示 2 个 + "+N"）。
 /// 批次 A：每格加浅底色圆角框；有班次时框底色随首个班次颜色变化（浅色变体）；
 /// 今天以 accent 描边 + 浅色圆点高亮。
-/// R15 迭代：有备注的日期右上角按艾森豪威尔象限显示至多 4 个迷你色块标签
+/// R15 迭代：有备注的日期，右上角边缘竖排至多 4 个象限小圆点
 /// （红=重要且紧急 / 蓝=重要不紧急 / 橙=紧急不重要 / 灰=不重要不紧急），
-/// 尺寸控制在格内，不挤占相邻日期。
+/// 样式仿上一版小圆圈记号笔，沿右边缘向下排列，不挤占相邻日期。
 struct DayCellView: View {
 
     let day: Date
@@ -41,7 +41,7 @@ struct DayCellView: View {
         }
         .overlay(alignment: .topTrailing) {
             if !noteQuadrants.isEmpty {
-                quadrantTags
+                quadrantDots
             }
         }
         .overlay {
@@ -52,22 +52,22 @@ struct DayCellView: View {
         }
     }
 
-    /// 象限迷你色块标签：横向排列，最多 4 个，紧凑不溢出
-    private var quadrantTags: some View {
-        HStack(spacing: 1.5) {
+    /// 右上角边缘的象限小圆点：竖排、最多 4 个、仿小圆圈记号笔
+    private var quadrantDots: some View {
+        VStack(spacing: 2.5) {
             ForEach(noteQuadrants.prefix(4), id: \.rawValue) { quadrant in
-                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                Circle()
                     .fill(Color(paletteHex: quadrant.colorHex))
-                    .frame(width: 6, height: 6)
+                    .frame(width: 6.5, height: 6.5)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.9), lineWidth: 0.8)
+                    )
+                    .shadow(color: .black.opacity(0.15), radius: 0.6, y: 0.5)
                     .accessibilityLabel(quadrant.title)
             }
         }
-        .padding(1)
-        .background(
-            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                .fill(.background.opacity(0.85))
-        )
-        .padding(.trailing, 3)
+        .padding(.trailing, 2.5)
         .padding(.top, 3)
     }
 

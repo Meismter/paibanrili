@@ -75,12 +75,35 @@ struct SettingsView: View {
 
                 Section {
                     LabeledContent("版本",
-                                   value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.6")
+                                   value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.3")
+                        .listRowBackground(Color.clear)
+                    LabeledContent("制作", value: "Jason Gao")
                         .listRowBackground(Color.clear)
                     LabeledContent("数据存储", value: "完全本地，不上传任何数据")
                         .listRowBackground(Color.clear)
                 } header: {
                     Text("关于")
+                }
+
+                Section {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label("赞助支持", systemImage: "heart.fill")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(.pink)
+                        Text("如果这个应用对你有帮助，欢迎赞助一杯咖啡支持继续开发 👇")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Text("TRC20：TNajMHZePUgPa36mxQL8kBXMAgjX9qwZ5f")
+                            .font(.footnote.monospaced())
+                            .textSelection(.enabled)
+                            .padding(8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.gray.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+                    }
+                    .padding(.vertical, 2)
+                    .listRowBackground(Color.clear)
+                } header: {
+                    Text("赞助")
                 }
             }
             .listStyle(.plain)
