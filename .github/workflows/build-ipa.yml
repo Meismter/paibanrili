@@ -113,7 +113,11 @@ jobs:
             "publishConfig": { "registry": "https://npm.pkg.github.com/" }
           }
           EOF
-          echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" > .npmrc
-          npm config set @meismter:registry https://npm.pkg.github.com/
+          # token 与 scope-registry 写在同一个项目 .npmrc，避免 npm config set 跑到 user 级
+          # 导致 registry/auth 配置分离的 ENEEDAUTH 问题
+          cat > .npmrc <<EOF
+          //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+          @meismter:registry=https://npm.pkg.github.com/
+          EOF
           npm publish --tag latest
           echo "已发布 @meismter/shift-scheduler-ipa@${VERSION}"
