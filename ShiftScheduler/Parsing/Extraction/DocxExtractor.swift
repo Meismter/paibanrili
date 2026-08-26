@@ -14,7 +14,7 @@ struct DocxExtractor: TextExtracting {
     func extract(data: Data) throws -> ExtractionOutput {
         // ZIPFoundation ≥0.9.17 的 Archive 初始化器为 throwing（非 failable），
         // 用 try? 保持原 guard-let 语义：非法容器 → invalidContainer。
-        guard let archive = try? Archive(data: data) else {
+        guard let archive = try? Archive(data: data, accessMode: .read) else {
             throw ExtractionError.invalidContainer
         }
         let xmlData = try ZipReader.readFile(archive, "word/document.xml")
