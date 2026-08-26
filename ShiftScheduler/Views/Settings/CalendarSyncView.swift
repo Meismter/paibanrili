@@ -47,7 +47,7 @@ struct CalendarSyncView: View {
         let month: Int
         let isCurrent: Bool
 
-        var key: String { String(format: "%04d-%02d", year, month) }
+        var id: String { String(format: "%04d-%02d", year, month) }
         var label: String { "\(year)年\(month)月" + (isCurrent ? "（本月）" : "") }
     }
 
@@ -68,7 +68,7 @@ struct CalendarSyncView: View {
         .onAppear {
             viewModel.refresh()
             if selectedMonthKeys.isEmpty {
-                selectedMonthKeys = [monthOptions.first { $0.isCurrent }?.key ?? ""]
+                selectedMonthKeys = [monthOptions.first { $0.isCurrent }?.id ?? ""]
             }
             refreshMonthCounts()
         }
@@ -139,10 +139,10 @@ struct CalendarSyncView: View {
                 Toggle(isOn: monthBinding(option)) {
                     HStack {
                         Text(option.label)
-                            .foregroundStyle(selectedMonthKeys.contains(option.key) ? Color.primary : Color.secondary)
+                            .foregroundStyle(selectedMonthKeys.contains(option.id) ? Color.primary : Color.secondary)
                         Spacer()
                         // 该月排班天数提示（缓存值）
-                        Text("\(monthEntryCounts[option.key, default: 0]) 天")
+                        Text("\(monthEntryCounts[option.id, default: 0]) 天")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
@@ -159,12 +159,12 @@ struct CalendarSyncView: View {
     /// 单个月份开关的双向绑定
     private func monthBinding(_ option: MonthOption) -> Binding<Bool> {
         Binding<Bool>(
-            get: { selectedMonthKeys.contains(option.key) },
+            get: { selectedMonthKeys.contains(option.id) },
             set: { on in
                 if on {
-                    selectedMonthKeys.insert(option.key)
+                    selectedMonthKeys.insert(option.id)
                 } else {
-                    selectedMonthKeys.remove(option.key)
+                    selectedMonthKeys.remove(option.id)
                 }
             }
         )
@@ -188,7 +188,7 @@ struct CalendarSyncView: View {
                 if selectedMonthKeys.count == monthOptions.count {
                     selectedMonthKeys.removeAll()
                 } else {
-                    selectedMonthKeys = Set(monthOptions.map(\.key))
+                    selectedMonthKeys = Set(monthOptions.map(\.id))
                 }
             }
             .font(.footnote)
@@ -264,8 +264,8 @@ struct CalendarSyncView: View {
         )) ?? []
         var counts: [String: Int] = [:]
         for option in monthOptions {
-            guard let range = interval(forMonthKey: option.key) else { continue }
-            counts[option.key] = all.filter { $0.attributedDate >= range.start && $0.attributedDate <= range.end }.count
+            guard let range = interval(forMonthKey: option.id) else { continue }
+            counts[option.id] = all.filter { $0.attributedDate >= range.start && $0.attributedDate <= range.end }.count
         }
         monthEntryCounts = counts
     }
@@ -295,13 +295,15 @@ struct CalendarSyncView: View {
     /// 指定月份键集合内的全部成员排班条目（单次全量取回 + 内存过滤）
     private func entries(inMonths keys: Set<String>) -> [ScheduleEntry] {
         guard !keys.isEmpty else { return [] }
-        let intervals = keys.compactMap { interval(forMonthKey: $0) }
+        let intervals: [(start: Date, end: Date)] = keys.compactMap { interval(forMonthKey: $0) }
         guard !intervals.isEmpty else { return [] }
         let all = (try? modelContext.fetch(
             FetchDescriptor<ScheduleEntry>(sortBy: [SortDescriptor(\.attributedDate)])
         )) ?? []
         return all.filter { entry in
-            intervals.contains { $0.attributedDate >= $1.start && $0.attributedDate <= $1.end }
+            intervals.contains { range in
+                entry.attributedDate >= range.start && entry.attributedDate <= range.end
+            }
         }
     }
 }
