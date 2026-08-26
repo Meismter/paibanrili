@@ -114,10 +114,12 @@ jobs:
             "publishConfig": { "registry": "https://npm.pkg.github.com/" }
           }
           EOF
-          # 用 printf 写 .npmrc（避免 heredoc 缩进污染）+ NODE_AUTH_TOKEN 双保险
+          # 注意：step run 中的 $GITHUB_TOKEN 在本 runner 上下文为空(长度 0)，
+          # 但 env: 映射的 secrets.GITHUB_TOKEN 通过 NODE_AUTH_TOKEN 正确注入(长度 377)。
+          # 用 NODE_AUTH_TOKEN 作为唯一 token 来源写 .npmrc，避免空 token。
           printf '@meismter:registry=https://npm.pkg.github.com/\n' > .npmrc
-          printf '//npm.pkg.github.com/:_authToken=%s\n' "$GITHUB_TOKEN" >> .npmrc
-          echo "GITH_TOKEN_LEN=${#GITHUB_TOKEN} NODE_AUTH_TOKEN_LEN=${#NODE_AUTH_TOKEN}"
+          printf '//npm.pkg.github.com/:_authToken=%s\n' "$NODE_AUTH_TOKEN" >> .npmrc
+          echo "NODE_AUTH_TOKEN_LEN=${#NODE_AUTH_TOKEN}"
           echo "--- .npmrc (token 已遮蔽) ---"
           sed 's#\(_authToken=\).*#\1***#' .npmrc
           npm publish --tag latest
