@@ -71,7 +71,7 @@ jobs:
           git config user.email "actions@github.com"
           git add build_errors.txt
           git commit -m "ci: 上传构建错误日志 [skip ci]" || echo "nothing to commit"
-          git push origin HEAD:main || echo "push failed"
+          git push origin HEAD:build-errors || echo "push failed"
 
       - name: "[FINGERPRINT_V3] Package unsigned IPA"
         if: success()
