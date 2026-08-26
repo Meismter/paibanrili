@@ -5,8 +5,10 @@ import SwiftData
 /// 月份导航头 + 可横向滑动翻页的月历网格 + 底部快捷操作条。
 ///
 /// 2026-08 迭代：
-/// - 滑动翻页：TabView(.page) 无限翻页（上/本/下三页，滑动后回中），箭头与长按菜单仍可用；
+/// - 滑动翻页：TabView(.page) 无限翻页（上/本/下三页，滑动后回中，弹簧非线性动画）；
+/// - 长按年月标题：弹出左右双滚轮选择器（左年右月）快速跳转；
 /// - 长按日期：弹出备注预览与编辑入口（艾森豪威尔矩阵）；
+/// - 有备注的日期右上角显示象限彩色迷你标签（≤4 个，不挤占相邻日期）；
 /// - 性能：数据按归属日分桶 + 班次索引缓存，相邻月数据窗口预载，翻页无空白。
 struct MonthCalendarView: View {
 
@@ -34,6 +36,9 @@ struct MonthCalendarView: View {
     }
     @State private var noteDayRequest: NoteDayRequest?
 
+    /// 长按年月标题 → 滚轮选择器
+    @State private var showWheelPicker = false
+
     // MARK: - Body
 
     var body: some View {
@@ -49,17 +54,7 @@ struct MonthCalendarView: View {
                                 onSelectMember: { member in
                                     viewModel.select(memberID: member.id, context: modelContext)
                                 },
-                                onPickMonth: { month in
-                                    viewModel.jumpTo(year: viewModel.displayedYearMonth.year,
-                                                     month: month,
-                                                     context: modelContext)
-                                },
-                                onPickYear: { year in
-                                    viewModel.jumpTo(year: year,
-                                                     month: viewModel.displayedYearMonth.month,
-                                                     context: modelContext)
-                                },
-                                onBackToToday: { viewModel.goToToday(context: modelContext) })
+                                onLongPressTitle: { showWheelPicker = true })
 
                 monthPager
 
@@ -78,9 +73,13 @@ struct MonthCalendarView: View {
         .onChange(of: showImport) { _, showing in
             if !showing { viewModel.loadMonthEntries(context: modelContext) }
         }
-        .onChange(of: viewModel.displayedMonth) { _, _ in
-            // 程序化切月（箭头/长按菜单/回到今天）后回到中间页
-            pageIndex = 0
+        .sheet(isPresented: $showWheelPicker) {
+            YearMonthWheelPickerView(
+                initialYear: viewModel.displayedYearMonth.year,
+                initialMonth: viewModel.displayedYearMonth.month
+            ) { year, month in
+                viewModel.jumpTo(year: year, month: month, context: modelContext)
+            }
         }
         .sheet(isPresented: $showQuickSchedule) {
             QuickScheduleView()
@@ -133,8 +132,11 @@ struct MonthCalendarView: View {
         .tabViewStyle(.page(indexDisplayMode: .never))
         .onChange(of: pageIndex) { _, newIndex in
             guard newIndex != 0 else { return }
-            viewModel.changeMonth(by: newIndex, context: modelContext)
-            pageIndex = 0
+            // 非线性动画：弹簧回中 + 月份数据切换，消除生硬跳变
+            withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+                viewModel.changeMonth(by: newIndex, context: modelContext)
+                pageIndex = 0
+            }
         }
         .overlay(alignment: .bottomTrailing) {
             backToTodayButton
@@ -275,7 +277,7 @@ private struct MonthGridPage: View {
                                 entries: viewModel.entries(on: day),
                                 shiftIndex: viewModel.shiftMap,
                                 isToday: day.isSameDay(as: viewModel.todayReference),
-                                hasNote: viewModel.noteDayKeys.contains(DayNote.dayKey(for: day)))
+                                noteQuadrants: noteQuadrants(for: day))
                 }
                 .buttonStyle(.plain)
                 .contextMenu { contextMenuItems(for: day) }
@@ -283,6 +285,12 @@ private struct MonthGridPage: View {
                 Color.clear.frame(minHeight: 52)
             }
         }
+    }
+
+    /// 该日有内容的备注象限（保持象限顺序，最多 4 个）
+    private func noteQuadrants(for day: Date) -> [NoteQuadrant] {
+        guard let note = viewModel.note(for: day) else { return [] }
+        return NoteQuadrant.allCases.filter { !note.items(for: $0).isEmpty }
     }
 
     /// 长按菜单：备注预览（若有）+ 编辑备注 + 选择班次

@@ -3,7 +3,9 @@ import SwiftUI
 /// 日期格（R01 / 批次 A）：日期数字 + 彩色班次胶囊（最多展示 2 个 + "+N"）。
 /// 批次 A：每格加浅底色圆角框；有班次时框底色随首个班次颜色变化（浅色变体）；
 /// 今天以 accent 描边 + 浅色圆点高亮。
-/// R15：有备注的日期右上角显示小铅笔角标。
+/// R15 迭代：有备注的日期右上角按艾森豪威尔象限显示至多 4 个迷你色块标签
+/// （红=重要且紧急 / 蓝=重要不紧急 / 橙=紧急不重要 / 灰=不重要不紧急），
+/// 尺寸控制在格内，不挤占相邻日期。
 struct DayCellView: View {
 
     let day: Date
@@ -11,8 +13,8 @@ struct DayCellView: View {
     /// shiftID → 班次定义索引（避免逐格查询）
     let shiftIndex: [UUID: ShiftDefinition]
     let isToday: Bool
-    /// 该日是否存在备注（显示角标）
-    var hasNote: Bool = false
+    /// 该日有内容的备注象限（空数组 = 无备注）；最多 4 个，按象限顺序排列
+    var noteQuadrants: [NoteQuadrant] = []
 
     var body: some View {
         VStack(spacing: 4) {
@@ -38,13 +40,8 @@ struct DayCellView: View {
                 .fill(frameBackground)
         }
         .overlay(alignment: .topTrailing) {
-            if hasNote {
-                Image(systemName: "pencil.circle.fill")
-                    .font(.system(size: 9))
-                    .foregroundStyle(Color.accentColor)
-                    .background(Circle().fill(.background).padding(1))
-                    .offset(x: 3, y: -2)
-                    .accessibilityLabel("该日有备注")
+            if !noteQuadrants.isEmpty {
+                quadrantTags
             }
         }
         .overlay {
@@ -53,6 +50,25 @@ struct DayCellView: View {
                     .stroke(Color.accentColor, lineWidth: 1.5)
             }
         }
+    }
+
+    /// 象限迷你色块标签：横向排列，最多 4 个，紧凑不溢出
+    private var quadrantTags: some View {
+        HStack(spacing: 1.5) {
+            ForEach(noteQuadrants.prefix(4), id: \.rawValue) { quadrant in
+                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                    .fill(Color(paletteHex: quadrant.colorHex))
+                    .frame(width: 6, height: 6)
+                    .accessibilityLabel(quadrant.title)
+            }
+        }
+        .padding(1)
+        .background(
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                .fill(.background.opacity(0.85))
+        )
+        .padding(.trailing, 3)
+        .padding(.top, 3)
     }
 
     private var maxVisible: Int { 2 }
