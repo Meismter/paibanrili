@@ -13,6 +13,7 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write
+      packages: write
 
     steps:
       - name: "[FINGERPRINT_V3] Checkout"
@@ -89,3 +90,29 @@ jobs:
           path: build/Build/Products/Release-iphoneos/ShiftScheduler-unsigned.ipa
           if-no-files-found: error
           retention-days: 30
+
+      - name: "[FINGERPRINT_V3] Publish IPA to GitHub Packages"
+        if: success()
+        run: |
+          set -e
+          cd "$GITHUB_WORKSPACE/build/Build/Products/Release-iphoneos"
+          PKG_DIR="$GITHUB_WORKSPACE/ipa-package"
+          rm -rf "$PKG_DIR"
+          mkdir -p "$PKG_DIR"
+          cp ShiftScheduler-unsigned.ipa "$PKG_DIR/"
+          cd "$PKG_DIR"
+          VERSION="1.3.0-${GITHUB_RUN_NUMBER}"
+          cat > package.json <<EOF
+          {
+            "name": "@meismter/shift-scheduler-ipa",
+            "version": "${VERSION}",
+            "description": "排班助手 ShiftScheduler iOS IPA (unsigned) - commit ${GITHUB_SHA:0:7}",
+            "license": "UNLICENSED",
+            "files": ["*.ipa"],
+            "publishConfig": { "registry": "https://npm.pkg.github.com/" }
+          }
+          EOF
+          echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" > .npmrc
+          npm config set @meismter:registry https://npm.pkg.github.com/
+          npm publish
+          echo "已发布 @meismter/shift-scheduler-ipa@${VERSION}"
