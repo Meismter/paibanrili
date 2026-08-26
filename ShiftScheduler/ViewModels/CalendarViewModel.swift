@@ -5,6 +5,11 @@ import Observation
 /// 月历主页视图模型（R01/R02）：
 /// 维护当前显示月份与选中成员，按归属日分桶查询当月排班，
 /// 提供单元格指派/清除入口（写库后统一刷新 Widget 快照）。
+///
+/// 性能约定（2026-08 优化）：
+/// - 排班条目按归属日预分桶（entriesByDay），单元格查询 O(1)；
+/// - 班次索引（shiftMap）只在数据加载时构建，避免每次 body 求值重建字典；
+/// - 冲突检测结果随月份加载缓存一次，不在 body 中重复计算。
 @MainActor
 @Observable
 final class CalendarViewModel {
@@ -25,11 +30,31 @@ final class CalendarViewModel {
 
     private(set) var members: [Member] = []
 
+    /// 归属日正午 → 当日条目（loadMonthEntries 时一次性分桶）
+    private(set) var entriesByDay: [Date: [ScheduleEntry]] = [:]
+
+    /// shiftID → 班次定义索引（loadShifts 时构建）
+    private(set) var shiftMap: [UUID: ShiftDefinition] = [:]
+
+    /// 本月冲突缓存（loadMonthEntries 时计算一次）
+    private(set) var cachedConflicts: [Conflict] = []
+
+    /// "今天"引用（load 时快照，避免每格重复构造 Date() 与同日比较）
+    private(set) var todayReference: Date = Date()
+
+    /// 有非空备注的归属日键集合（"yyyy-MM-dd"），用于格子上的备注角标
+    private(set) var noteDayKeys: Set<String> = []
+
     // MARK: - 派生数据
 
     private var calendar: Calendar { .current }
 
     var monthTitle: String { displayedMonth.chineseMonthTitle }
+
+    /// 当前显示的 (年, 月)
+    var displayedYearMonth: (year: Int, month: Int) {
+        (displayedMonth.year, displayedMonth.month)
+    }
 
     /// 周起始日偏好（1=周日 ... 7=周六；默认周一），与 SettingsView 共用同一 AppStorage 键
     static let firstWeekdayKey = "settings.firstWeekday"
@@ -45,26 +70,37 @@ final class CalendarViewModel {
             ?? members.first
     }
 
-    /// 当月网格日期单元（nil 为补位）
-    var gridCells: [Date?] {
-        let components = calendar.dateComponents([.year, .month], from: displayedMonth)
-        return DateUtils.monthGrid(year: components.year ?? 2026,
-                                   month: components.month ?? 1,
-                                   firstWeekdayOfWeek: firstWeekday,
-                                   calendar: calendar)
+    /// 当前显示月是否包含今天
+    var isShowingCurrentMonth: Bool {
+        displayedMonth.year == todayReference.year && displayedMonth.month == todayReference.month
     }
 
-    /// 某归属日的排班条目
+    /// 当月网格日期单元（nil 为补位）。仅在月份/周起始变化时重算，
+    /// 由 changeMonth / goToToday / jumpTo 内部刷新，body 只读取缓存。
+    private(set) var gridCells: [Date?] = []
+
+    // MARK: - 单元格查询
+
+    /// 某归属日的排班条目（O(1) 字典查找；无命中返回空数组）
     func entries(on day: Date) -> [ScheduleEntry] {
-        let key = DateUtils.noon(of: day)
-        return monthEntries.filter { $0.attributedDate == key }
+        entriesByDay[DateUtils.noon(of: day)] ?? []
     }
 
     // MARK: - 加载
 
     func load(context: ModelContext) {
+        todayReference = Date()
         loadMembers(context: context)
+        loadShifts(context: context)
+        refreshGrid()
         loadMonthEntries(context: context)
+        loadNoteDayKeys(context: context)
+    }
+
+    /// 加载有备注的日期键集合（单次全量取回，量级极小）
+    func loadNoteDayKeys(context: ModelContext) {
+        let all = (try? context.fetch(FetchDescriptor<DayNote>())) ?? []
+        noteDayKeys = Set(all.filter { !$0.isEmpty }.map(\.dayKey))
     }
 
     func loadMembers(context: ModelContext) {
@@ -80,17 +116,47 @@ final class CalendarViewModel {
         }
     }
 
+    /// 构建班次索引（班次库变更后由 load 重入刷新）
+    func loadShifts(context: ModelContext) {
+        let all = (try? context.fetch(FetchDescriptor<ShiftDefinition>())) ?? []
+        shiftMap = Dictionary(uniqueKeysWithValues: all.map { ($0.id, $0) })
+    }
+
     func loadMonthEntries(context: ModelContext) {
         guard let memberID = currentMember?.id else {
             monthEntries = []
+            entriesByDay = [:]
+            cachedConflicts = []
             return
         }
         let range = monthInterval()
-        let predicate = #Predicate<ScheduleEntry> { $0.memberID == memberID }
-        let all = (try? context.fetch(FetchDescriptor(predicate: predicate))) ?? []
-        monthEntries = all
-            .filter { $0.attributedDate >= range.start && $0.attributedDate <= range.end }
-            .sorted { $0.attributedDate < $1.attributedDate }
+        // 日期范围下推到数据库谓词 + 数据库排序，避免全量取回后内存过滤
+        let start = range.start
+        let end = range.end
+        let predicate = #Predicate<ScheduleEntry> {
+            $0.memberID == memberID && $0.attributedDate >= start && $0.attributedDate <= end
+        }
+        let descriptor = FetchDescriptor(predicate: predicate,
+                                         sortBy: [SortDescriptor(\.attributedDate)])
+        let fetched = (try? context.fetch(descriptor)) ?? []
+        monthEntries = fetched
+
+        // 一次性按归属日分桶
+        var buckets: [Date: [ScheduleEntry]] = [:]
+        buckets.reserveCapacity(fetched.count)
+        for entry in fetched {
+            buckets[entry.attributedDate, default: []].append(entry)
+        }
+        entriesByDay = buckets
+        cachedConflicts = ConflictDetector.detect(entries: fetched)
+    }
+
+    /// 刷新网格缓存（月份或周起始偏好变化时调用）
+    func refreshGrid() {
+        gridCells = DateUtils.monthGrid(year: displayedMonth.year,
+                                        month: displayedMonth.month,
+                                        firstWeekdayOfWeek: firstWeekday,
+                                        calendar: calendar)
     }
 
     // MARK: - 月份/成员切换
@@ -98,6 +164,27 @@ final class CalendarViewModel {
     func changeMonth(by delta: Int, context: ModelContext) {
         guard let target = calendar.date(byAdding: .month, value: delta, to: displayedMonth) else { return }
         displayedMonth = DateUtils.noon(of: target)
+        refreshGrid()
+        loadMonthEntries(context: context)
+    }
+
+    /// 跳转到指定年月（长按标题快速切换入口）
+    func jumpTo(year: Int, month: Int, context: ModelContext) {
+        var components = DateComponents()
+        components.year = year
+        components.month = month
+        components.day = 1
+        guard let target = calendar.date(from: components) else { return }
+        displayedMonth = DateUtils.noon(of: target)
+        refreshGrid()
+        loadMonthEntries(context: context)
+    }
+
+    /// 返回今天所在月份
+    func goToToday(context: ModelContext) {
+        todayReference = Date()
+        displayedMonth = todayReference.noon
+        refreshGrid()
         loadMonthEntries(context: context)
     }
 
@@ -142,8 +229,9 @@ final class CalendarViewModel {
 
     // MARK: - 冲突提示（R14 预留接口的消费示例）
 
+    /// 本月冲突（缓存在 loadMonthEntries，body 中只读，不再重复检测）
     func conflictsThisMonth() -> [Conflict] {
-        ConflictDetector.detect(entries: monthEntries)
+        cachedConflicts
     }
 
     // MARK: - 私有

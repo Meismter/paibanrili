@@ -52,6 +52,16 @@ struct ShiftPickerSheet: View {
                     }
                     .listRowBackground(Color.clear)
                 }
+
+                // R15：日期备注入口（艾森豪威尔矩阵）
+                Section {
+                    NavigationLink {
+                        DayNoteMatrixView(day: day)
+                    } label: {
+                        Label("日期备注 · 艾森豪威尔矩阵", systemImage: "square.grid.2x2")
+                    }
+                    .listRowBackground(Color.clear)
+                }
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)

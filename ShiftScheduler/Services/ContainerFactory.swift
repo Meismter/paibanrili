@@ -36,7 +36,7 @@ enum ContainerFactory {
     /// 单点构建 ModelContainer（类图接口 sharedContainer()）。
     /// 失败降级链：共享 URL → 默认位置 → 内存容器（保证 App 永不因存储崩溃）。
     static func sharedContainer() -> ModelContainer {
-        let schema = Schema([Member.self, ShiftDefinition.self, ScheduleEntry.self])
+        let schema = Schema([Member.self, ShiftDefinition.self, ScheduleEntry.self, DayNote.self])
 
         // 1) 指向 App Group 共享 URL
         do {

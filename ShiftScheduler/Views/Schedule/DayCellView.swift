@@ -3,6 +3,7 @@ import SwiftUI
 /// 日期格（R01 / 批次 A）：日期数字 + 彩色班次胶囊（最多展示 2 个 + "+N"）。
 /// 批次 A：每格加浅底色圆角框；有班次时框底色随首个班次颜色变化（浅色变体）；
 /// 今天以 accent 描边 + 浅色圆点高亮。
+/// R15：有备注的日期右上角显示小铅笔角标。
 struct DayCellView: View {
 
     let day: Date
@@ -10,6 +11,8 @@ struct DayCellView: View {
     /// shiftID → 班次定义索引（避免逐格查询）
     let shiftIndex: [UUID: ShiftDefinition]
     let isToday: Bool
+    /// 该日是否存在备注（显示角标）
+    var hasNote: Bool = false
 
     var body: some View {
         VStack(spacing: 4) {
@@ -33,6 +36,16 @@ struct DayCellView: View {
         .background {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(frameBackground)
+        }
+        .overlay(alignment: .topTrailing) {
+            if hasNote {
+                Image(systemName: "pencil.circle.fill")
+                    .font(.system(size: 9))
+                    .foregroundStyle(Color.accentColor)
+                    .background(Circle().fill(.background).padding(1))
+                    .offset(x: 3, y: -2)
+                    .accessibilityLabel("该日有备注")
+            }
         }
         .overlay {
             if isToday {

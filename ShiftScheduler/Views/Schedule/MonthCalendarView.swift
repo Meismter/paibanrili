@@ -22,25 +22,32 @@ struct MonthCalendarView: View {
     }
     @State private var pickedDay: PickedDay?
 
-    private var calendar: Calendar { .current }
-
-    private var shiftIndex: [UUID: ShiftDefinition] {
-        Dictionary(uniqueKeysWithValues: shifts.map { ($0.id, $0) })
-    }
-
     // MARK: - Body
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 10) {
                 MonthHeaderView(monthTitle: viewModel.monthTitle,
+                                displayedYear: viewModel.displayedYearMonth.year,
+                                displayedMonthNumber: viewModel.displayedYearMonth.month,
                                 members: viewModel.members,
                                 currentMember: viewModel.currentMember,
                                 onPrevious: { viewModel.changeMonth(by: -1, context: modelContext) },
                                 onNext: { viewModel.changeMonth(by: 1, context: modelContext) },
                                 onSelectMember: { member in
                                     viewModel.select(memberID: member.id, context: modelContext)
-                                })
+                                },
+                                onPickMonth: { month in
+                                    viewModel.jumpTo(year: viewModel.displayedYearMonth.year,
+                                                     month: month,
+                                                     context: modelContext)
+                                },
+                                onPickYear: { year in
+                                    viewModel.jumpTo(year: year,
+                                                     month: viewModel.displayedYearMonth.month,
+                                                     context: modelContext)
+                                },
+                                onBackToToday: { viewModel.goToToday(context: modelContext) })
 
                 calendarCard
 
@@ -49,7 +56,10 @@ struct MonthCalendarView: View {
             .navigationTitle("排班")
             .navigationBarTitleDisplayMode(.inline)
         }
-        .onAppear { viewModel.load(context: modelContext) }
+        .onAppear {
+            viewModel.load(context: modelContext)
+            viewModel.loadShifts(context: modelContext)
+        }
         .onChange(of: showQuickSchedule) { _, showing in
             if !showing { viewModel.loadMonthEntries(context: modelContext) }
         }
@@ -69,6 +79,7 @@ struct MonthCalendarView: View {
                              member: viewModel.currentMember ?? Member.selfMember(),
                              onDone: {
                 viewModel.loadMonthEntries(context: modelContext)
+                viewModel.loadNoteDayKeys(context: modelContext)
             },
                              existingEntry: picked.entry)
         }
@@ -97,13 +108,13 @@ struct MonthCalendarView: View {
             ScrollView {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7),
                           spacing: 4) {
-                    ForEach(Array(cellItems.enumerated()), id: \.offset) { _, item in
+                    ForEach(Array(viewModel.gridCells.enumerated()), id: \.offset) { _, item in
                         cell(for: item)
                     }
                 }
                 .padding(.horizontal, 8)
 
-                if !viewModel.conflictsThisMonth().isEmpty {
+                if !viewModel.cachedConflicts.isEmpty {
                     conflictBanner
                 }
             }
@@ -113,8 +124,40 @@ struct MonthCalendarView: View {
         .glassSurface(cornerRadius: 16)
         .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
         .padding(.horizontal, 8)
+        .overlay(alignment: .bottomTrailing) {
+            backToTodayButton
+        }
     }
 
+    /// 右下角"返回今日"悬浮按钮：不在本月时显示，点击回到今天所在月份
+    @ViewBuilder
+    private var backToTodayButton: some View {
+        if !viewModel.isShowingCurrentMonth {
+            Button {
+                withAnimation(.snappy) {
+                    viewModel.goToToday(context: modelContext)
+                }
+            } label: {
+                VStack(spacing: 2) {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 15, weight: .semibold))
+                    Text("今日")
+                        .font(.caption2.bold())
+                }
+                .foregroundStyle(.white)
+                .frame(width: 48, height: 48)
+                .background(Color.accentColor, in: Circle())
+                .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("返回今天")
+            .padding(.trailing, 14)
+            .padding(.bottom, 14)
+            .transition(.scale.combined(with: .opacity))
+        }
+    }
+
+    /// 单元格构建：班次索引与当日条目均来自 ViewModel 缓存，逐格零重建
     private func cell(for item: Date?) -> some View {
         Group {
             if let day = item {
@@ -124,8 +167,9 @@ struct MonthCalendarView: View {
                 } label: {
                     DayCellView(day: day,
                                 entries: viewModel.entries(on: day),
-                                shiftIndex: shiftIndex,
-                                isToday: day.isSameDay(as: Date()))
+                                shiftIndex: viewModel.shiftMap,
+                                isToday: day.isSameDay(as: viewModel.todayReference),
+                                hasNote: viewModel.noteDayKeys.contains(DayNote.dayKey(for: day)))
                 }
                 .buttonStyle(.plain)
             } else {
@@ -134,12 +178,8 @@ struct MonthCalendarView: View {
         }
     }
 
-    private var cellItems: [Date?] {
-        viewModel.gridCells
-    }
-
     private var conflictBanner: some View {
-        Label("本月有 \(viewModel.conflictsThisMonth().count) 天存在重复排班，点击格子可修正",
+        Label("本月有 \(viewModel.cachedConflicts.count) 天存在重复排班，点击格子可修正",
               systemImage: "exclamationmark.triangle.fill")
             .font(.footnote)
             .foregroundStyle(.orange)
