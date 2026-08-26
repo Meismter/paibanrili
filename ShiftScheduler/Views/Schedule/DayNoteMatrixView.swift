@@ -36,7 +36,7 @@ struct DayNoteMatrixView: View {
             }
             .padding(.vertical, 12)
         }
-        .background(Color(.systemGroupedBackground).opacity(0.4))
+        .background(Color(red: 0.5, green: 0.5, blue: 0.5).opacity(0.06))
         .navigationTitle(day.chineseDateString)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

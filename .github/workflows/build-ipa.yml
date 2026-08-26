@@ -11,6 +11,8 @@ jobs:
   build:
     runs-on: macos-26
     timeout-minutes: 30
+    permissions:
+      contents: write
 
     steps:
       - name: "[FINGERPRINT_V3] Checkout"
@@ -49,15 +51,30 @@ jobs:
           echo "使用工程: $PROJECT_PATH"
           SCHEME_NAME=$(basename "$PROJECT_PATH" .xcodeproj)
           # 优先用 ShiftScheduler 作为 scheme（target 名）
+          set -o pipefail
           xcodebuild \
             -project "$PROJECT_PATH" \
             -scheme ShiftScheduler \
             -configuration Release \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO \
-            build
+            build 2>&1 | tee build_output.log
+
+      - name: "[FINGERPRINT_V3] Save error log to repo (on failure)"
+        if: failure()
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          grep -E "error:|warning: .*deprecated|BUILD FAILED|note: Building" build_output.log | head -120 > build_errors.txt || true
+          echo "== 构建失败 $(date -u +%FT%TZ) ==" >> build_errors.txt
+          tail -60 build_output.log >> build_errors.txt || true
+          git config user.name "build-bot"
+          git config user.email "actions@github.com"
+          git add build_errors.txt
+          git commit -m "ci: 上传构建错误日志 [skip ci]" || echo "nothing to commit"
+          git push origin HEAD:main || echo "push failed"
 
       - name: "[FINGERPRINT_V3] Package unsigned IPA"
+        if: success()
         run: |
           cd "$GITHUB_WORKSPACE/build/Build/Products/Release-iphoneos"
           mkdir -p Payload
