@@ -15,6 +15,11 @@ extension Date {
         Calendar.current.date(byAdding: .day, value: days, to: self) ?? self
     }
 
+    /// 加/减若干月（用于滑动翻页的相邻月网格）。
+    func adding(months: Int) -> Date {
+        Calendar.current.date(byAdding: .month, value: months, to: self) ?? self
+    }
+
     /// 是否为同一自然日（本地时区比较）。
     func isSameDay(as other: Date) -> Bool {
         Calendar.current.isDate(self, inSameDayAs: other)

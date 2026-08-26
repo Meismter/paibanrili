@@ -27,11 +27,11 @@ struct CalendarSyncView: View {
 
     private let eventKitService = EventKitService()
 
-    /// 候选月份：当前月前后各 6 个月
+    /// 候选月份：当前月前后各 12 个月（共 25 个月）
     private var monthOptions: [MonthOption] {
         let calendar = Calendar.current
         let now = Date.now
-        return (-6...6).compactMap { offset in
+        return (-12...12).compactMap { offset in
             guard let date = calendar.date(byAdding: .month, value: offset, to: now) else { return nil }
             let year = calendar.component(.year, from: date)
             let month = calendar.component(.month, from: date)
@@ -39,6 +39,27 @@ struct CalendarSyncView: View {
                                month: month,
                                isCurrent: offset == 0)
         }
+    }
+
+    /// 候选月份按年份分组（保持时间序）
+    private var monthGroups: [(year: Int, months: [MonthOption])] {
+        var groups: [(year: Int, months: [MonthOption])] = []
+        var currentYear: Int?
+        var bucket: [MonthOption] = []
+        for option in monthOptions {
+            if option.year != currentYear {
+                if !bucket.isEmpty {
+                    groups.append((currentYear ?? option.year, bucket))
+                }
+                currentYear = option.year
+                bucket = []
+            }
+            bucket.append(option)
+        }
+        if !bucket.isEmpty {
+            groups.append((currentYear ?? 0, bucket))
+        }
+        return groups
     }
 
     /// 候选月份模型
@@ -49,6 +70,7 @@ struct CalendarSyncView: View {
 
         var id: String { String(format: "%04d-%02d", year, month) }
         var label: String { "\(year)年\(month)月" + (isCurrent ? "（本月）" : "") }
+        var shortLabel: String { "\(month)月" + (isCurrent ? "·今" : "") }
     }
 
     var body: some View {
@@ -133,41 +155,78 @@ struct CalendarSyncView: View {
 
     // MARK: - 月份勾选
 
+    /// 紧凑月份网格：按年份分组，每月一个小格子，点击切换选中
     private var monthSelectSection: some View {
         Section {
-            ForEach(monthOptions) { option in
-                Toggle(isOn: monthBinding(option)) {
+            ForEach(Array(monthGroups.enumerated()), id: \.offset) { _, group in
+                VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        Text(option.label)
-                            .foregroundStyle(selectedMonthKeys.contains(option.id) ? Color.primary : Color.secondary)
+                        Text("\(String(group.year))年")
+                            .font(.footnote.bold())
+                            .foregroundStyle(.secondary)
                         Spacer()
-                        // 该月排班天数提示（缓存值）
-                        Text("\(monthEntryCounts[option.id, default: 0]) 天")
-                            .font(.caption)
+                        Text("已选 \(group.months.filter { selectedMonthKeys.contains($0.id) }.count)/\(group.months.count)")
+                            .font(.caption2)
                             .foregroundStyle(.tertiary)
                     }
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4),
+                              spacing: 6) {
+                        ForEach(group.months) { option in
+                            monthCell(option)
+                        }
+                    }
                 }
+                .padding(.vertical, 4)
                 .listRowBackground(Color.clear)
             }
         } header: {
-            Text("同步月份")
+            Text("同步月份（点击勾选，可多选）")
         } footer: {
-            Text("勾选要同步到系统日历的月份（可多选）。")
+            Text("范围覆盖当前月前后各 12 个月，勾选后同步/导入均按所选月份执行。")
         }
     }
 
-    /// 单个月份开关的双向绑定
-    private func monthBinding(_ option: MonthOption) -> Binding<Bool> {
-        Binding<Bool>(
-            get: { selectedMonthKeys.contains(option.id) },
-            set: { on in
-                if on {
-                    selectedMonthKeys.insert(option.id)
-                } else {
-                    selectedMonthKeys.remove(option.id)
+    /// 单个月份格子：选中高亮 + 对勾，未选中为浅灰
+    private func monthCell(_ option: MonthOption) -> some View {
+        let isSelected = selectedMonthKeys.contains(option.id)
+        let dayCount = monthEntryCounts[option.id, default: 0]
+        return Button {
+            toggle(option)
+        } label: {
+            VStack(spacing: 1) {
+                HStack(spacing: 2) {
+                    Text(option.shortLabel)
+                        .font(.system(size: 11, weight: isSelected ? .bold : .regular))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    if isSelected {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 8, weight: .bold))
+                    }
                 }
+                Text(dayCount > 0 ? "\(dayCount)天" : "·")
+                    .font(.system(size: 8))
+                    .foregroundStyle(.tertiary)
             }
-        )
+            .foregroundStyle(isSelected ? Color.white : Color.primary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(isSelected ? Color.accentColor : Color.gray.opacity(0.14))
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(option.label + (isSelected ? "，已选择" : ""))
+    }
+
+    /// 切换选中状态
+    private func toggle(_ option: MonthOption) {
+        if selectedMonthKeys.contains(option.id) {
+            selectedMonthKeys.remove(option.id)
+        } else {
+            selectedMonthKeys.insert(option.id)
+        }
     }
 
     // MARK: - 写入（R05）

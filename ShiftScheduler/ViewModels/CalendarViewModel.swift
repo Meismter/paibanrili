@@ -45,6 +45,9 @@ final class CalendarViewModel {
     /// 有非空备注的归属日键集合（"yyyy-MM-dd"），用于格子上的备注角标
     private(set) var noteDayKeys: Set<String> = []
 
+    /// 归属日键 → DayNote（loadNoteDayKeys 时一次性构建，供长按预览备注）
+    private(set) var notesByDayKey: [String: DayNote] = [:]
+
     // MARK: - 派生数据
 
     private var calendar: Calendar { .current }
@@ -75,10 +78,6 @@ final class CalendarViewModel {
         displayedMonth.year == todayReference.year && displayedMonth.month == todayReference.month
     }
 
-    /// 当月网格日期单元（nil 为补位）。仅在月份/周起始变化时重算，
-    /// 由 changeMonth / goToToday / jumpTo 内部刷新，body 只读取缓存。
-    private(set) var gridCells: [Date?] = []
-
     // MARK: - 单元格查询
 
     /// 某归属日的排班条目（O(1) 字典查找；无命中返回空数组）
@@ -92,7 +91,6 @@ final class CalendarViewModel {
         todayReference = Date()
         loadMembers(context: context)
         loadShifts(context: context)
-        refreshGrid()
         loadMonthEntries(context: context)
         loadNoteDayKeys(context: context)
     }
@@ -101,6 +99,12 @@ final class CalendarViewModel {
     func loadNoteDayKeys(context: ModelContext) {
         let all = (try? context.fetch(FetchDescriptor<DayNote>())) ?? []
         noteDayKeys = Set(all.filter { !$0.isEmpty }.map(\.dayKey))
+        notesByDayKey = Dictionary(uniqueKeysWithValues: all.map { ($0.dayKey, $0) })
+    }
+
+    /// 某日的备注记录（无则 nil），供长按菜单预览
+    func note(for day: Date) -> DayNote? {
+        notesByDayKey[DayNote.dayKey(for: day)]
     }
 
     func loadMembers(context: ModelContext) {
@@ -129,10 +133,11 @@ final class CalendarViewModel {
             cachedConflicts = []
             return
         }
-        let range = monthInterval()
+        // 数据窗口 = 上月 + 本月 + 下月：滑动翻页时相邻月立即有数据，无空白闪烁
+        let center = monthInterval(offset: 0)
+        let start = monthInterval(offset: -1).start
+        let end = monthInterval(offset: 1).end
         // 日期范围下推到数据库谓词 + 数据库排序，避免全量取回后内存过滤
-        let start = range.start
-        let end = range.end
         let predicate = #Predicate<ScheduleEntry> {
             $0.memberID == memberID && $0.attributedDate >= start && $0.attributedDate <= end
         }
@@ -141,22 +146,17 @@ final class CalendarViewModel {
         let fetched = (try? context.fetch(descriptor)) ?? []
         monthEntries = fetched
 
-        // 一次性按归属日分桶
+        // 一次性按归属日分桶（覆盖三个月）
         var buckets: [Date: [ScheduleEntry]] = [:]
         buckets.reserveCapacity(fetched.count)
         for entry in fetched {
             buckets[entry.attributedDate, default: []].append(entry)
         }
         entriesByDay = buckets
-        cachedConflicts = ConflictDetector.detect(entries: fetched)
-    }
-
-    /// 刷新网格缓存（月份或周起始偏好变化时调用）
-    func refreshGrid() {
-        gridCells = DateUtils.monthGrid(year: displayedMonth.year,
-                                        month: displayedMonth.month,
-                                        firstWeekdayOfWeek: firstWeekday,
-                                        calendar: calendar)
+        // 冲突仅统计当前月（相邻月用于预览）
+        cachedConflicts = ConflictDetector.detect(entries: fetched.filter {
+            $0.attributedDate >= center.start && $0.attributedDate <= center.end
+        })
     }
 
     // MARK: - 月份/成员切换
@@ -164,7 +164,6 @@ final class CalendarViewModel {
     func changeMonth(by delta: Int, context: ModelContext) {
         guard let target = calendar.date(byAdding: .month, value: delta, to: displayedMonth) else { return }
         displayedMonth = DateUtils.noon(of: target)
-        refreshGrid()
         loadMonthEntries(context: context)
     }
 
@@ -176,7 +175,6 @@ final class CalendarViewModel {
         components.day = 1
         guard let target = calendar.date(from: components) else { return }
         displayedMonth = DateUtils.noon(of: target)
-        refreshGrid()
         loadMonthEntries(context: context)
     }
 
@@ -184,7 +182,6 @@ final class CalendarViewModel {
     func goToToday(context: ModelContext) {
         todayReference = Date()
         displayedMonth = todayReference.noon
-        refreshGrid()
         loadMonthEntries(context: context)
     }
 
@@ -236,11 +233,13 @@ final class CalendarViewModel {
 
     // MARK: - 私有
 
-    private func monthInterval() -> (start: Date, end: Date) {
-        let components = calendar.dateComponents([.year, .month], from: displayedMonth)
+    /// 某偏移月份的区间（offset 0 = 当前显示月；-1/+1 = 相邻月）
+    private func monthInterval(offset: Int = 0) -> (start: Date, end: Date) {
+        let base = calendar.date(byAdding: .month, value: offset, to: displayedMonth) ?? displayedMonth
+        let components = calendar.dateComponents([.year, .month], from: base)
         let start = calendar.date(from: DateComponents(year: components.year ?? 2026,
                                                        month: components.month ?? 1,
-                                                       day: 1)) ?? displayedMonth
+                                                       day: 1)) ?? base
         let end = calendar.date(byAdding: DateComponents(month: 1, day: -1),
                                 to: calendar.startOfDay(for: start)) ?? start
         return (DateUtils.noon(of: start), DateUtils.noon(of: end))

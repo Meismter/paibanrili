@@ -2,18 +2,24 @@ import SwiftUI
 import SwiftData
 
 /// 月历排班主页（R01 正式版）：
-/// 月份导航头 + 星期行 + monthGrid 网格 + 底部快捷操作条
-/// （⚡快速排班 / ⬆️导入，挂接批次 2 的 ImportSourceView）。
+/// 月份导航头 + 可横向滑动翻页的月历网格 + 底部快捷操作条。
+///
+/// 2026-08 迭代：
+/// - 滑动翻页：TabView(.page) 无限翻页（上/本/下三页，滑动后回中），箭头与长按菜单仍可用；
+/// - 长按日期：弹出备注预览与编辑入口（艾森豪威尔矩阵）；
+/// - 性能：数据按归属日分桶 + 班次索引缓存，相邻月数据窗口预载，翻页无空白。
 struct MonthCalendarView: View {
 
     // MARK: - 状态
 
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \ShiftDefinition.sortOrder) private var shifts: [ShiftDefinition]
     @State private var viewModel = CalendarViewModel()
 
     @State private var showQuickSchedule = false
     @State private var showImport = false
+
+    /// 翻页索引：-1 上月 / 0 本月 / 1 下月（滑动后自动回中）
+    @State private var pageIndex = 0
 
     /// sheet(item:) 需要可标识包装
     private struct PickedDay: Identifiable {
@@ -21,6 +27,12 @@ struct MonthCalendarView: View {
         let entry: ScheduleEntry?
     }
     @State private var pickedDay: PickedDay?
+
+    /// 长按菜单 → 编辑备注（present DayNoteMatrixView；sheet(item:) 需要 Identifiable 包装）
+    private struct NoteDayRequest: Identifiable {
+        let id: Date
+    }
+    @State private var noteDayRequest: NoteDayRequest?
 
     // MARK: - Body
 
@@ -49,7 +61,7 @@ struct MonthCalendarView: View {
                                 },
                                 onBackToToday: { viewModel.goToToday(context: modelContext) })
 
-                calendarCard
+                monthPager
 
                 quickActionBar
             }
@@ -65,6 +77,10 @@ struct MonthCalendarView: View {
         }
         .onChange(of: showImport) { _, showing in
             if !showing { viewModel.loadMonthEntries(context: modelContext) }
+        }
+        .onChange(of: viewModel.displayedMonth) { _, _ in
+            // 程序化切月（箭头/长按菜单/回到今天）后回到中间页
+            pageIndex = 0
         }
         .sheet(isPresented: $showQuickSchedule) {
             QuickScheduleView()
@@ -83,50 +99,50 @@ struct MonthCalendarView: View {
             },
                              existingEntry: picked.entry)
         }
+        .sheet(item: $noteDayRequest) { request in
+            NavigationStack {
+                DayNoteMatrixView(day: request.id)
+            }
+            .presentationDetents([.large])
+        }
     }
 
-    // MARK: - 子视图
+    // MARK: - 滑动翻页
 
-    private var weekdayHeader: some View {
-        HStack(spacing: 0) {
-            ForEach(DateUtils.weekdaySymbols(firstWeekdayOfWeek: viewModel.firstWeekday),
-                    id: \.self) { symbol in
-                Text(symbol)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
-            }
+    /// 横向滑动翻页：上/本/下三页，滑动后回中并切换真实月份
+    private var monthPager: some View {
+        TabView(selection: $pageIndex) {
+            MonthGridPage(month: viewModel.displayedMonth.adding(months: -1),
+                          viewModel: viewModel,
+                          onSelectDay: selectDay,
+                          onEditNote: { noteDayRequest = NoteDayRequest(id: $0) })
+                .tag(-1)
+
+            MonthGridPage(month: viewModel.displayedMonth,
+                          viewModel: viewModel,
+                          onSelectDay: selectDay,
+                          onEditNote: { noteDayRequest = NoteDayRequest(id: $0) })
+                .tag(0)
+
+            MonthGridPage(month: viewModel.displayedMonth.adding(months: 1),
+                          viewModel: viewModel,
+                          onSelectDay: selectDay,
+                          onEditNote: { noteDayRequest = NoteDayRequest(id: $0) })
+                .tag(1)
         }
-        .padding(.horizontal, 8)
-    }
-
-    /// 月历卡片区域（批次 A：整体玻璃浮层，网格 + 星期头内嵌其中）
-    private var calendarCard: some View {
-        VStack(spacing: 8) {
-            weekdayHeader
-
-            ScrollView {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7),
-                          spacing: 4) {
-                    ForEach(Array(viewModel.gridCells.enumerated()), id: \.offset) { _, item in
-                        cell(for: item)
-                    }
-                }
-                .padding(.horizontal, 8)
-
-                if !viewModel.cachedConflicts.isEmpty {
-                    conflictBanner
-                }
-            }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+        .onChange(of: pageIndex) { _, newIndex in
+            guard newIndex != 0 else { return }
+            viewModel.changeMonth(by: newIndex, context: modelContext)
+            pageIndex = 0
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 4)
-        .glassSurface(cornerRadius: 16)
-        .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
-        .padding(.horizontal, 8)
         .overlay(alignment: .bottomTrailing) {
             backToTodayButton
         }
+    }
+
+    private func selectDay(_ day: Date, _ entry: ScheduleEntry?) {
+        pickedDay = PickedDay(id: day, entry: entry)
     }
 
     /// 右下角"返回今日"悬浮按钮：不在本月时显示，点击回到今天所在月份
@@ -157,40 +173,7 @@ struct MonthCalendarView: View {
         }
     }
 
-    /// 单元格构建：班次索引与当日条目均来自 ViewModel 缓存，逐格零重建
-    private func cell(for item: Date?) -> some View {
-        Group {
-            if let day = item {
-                Button {
-                    pickedDay = PickedDay(id: day,
-                                          entry: viewModel.entries(on: day).first)
-                } label: {
-                    DayCellView(day: day,
-                                entries: viewModel.entries(on: day),
-                                shiftIndex: viewModel.shiftMap,
-                                isToday: day.isSameDay(as: viewModel.todayReference),
-                                hasNote: viewModel.noteDayKeys.contains(DayNote.dayKey(for: day)))
-                }
-                .buttonStyle(.plain)
-            } else {
-                Color.clear.frame(minHeight: 52)
-            }
-        }
-    }
-
-    private var conflictBanner: some View {
-        Label("本月有 \(viewModel.cachedConflicts.count) 天存在重复排班，点击格子可修正",
-              systemImage: "exclamationmark.triangle.fill")
-            .font(.footnote)
-            .foregroundStyle(.orange)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
-            .background(Color.orange.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .padding(.horizontal)
-    }
-
-    /// 底部快捷操作条：⚡快速排班 / ⬆️导入（任务清单 #9；批次 A 改为玻璃浮层）
+    /// 底部快捷操作条：⚡快速排班 / ⬆️导入（批次 A 玻璃浮层）
     private var quickActionBar: some View {
         HStack(spacing: 12) {
             Button {
@@ -217,5 +200,140 @@ struct MonthCalendarView: View {
         .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
         .padding(.horizontal)
         .padding(.bottom, 6)
+    }
+}
+
+// MARK: - 单月网格页
+
+/// 一个月历网格页（滑动翻页的每一页）：星期头 + 网格 + 冲突横幅。
+/// 数据直接读取 viewModel 的三月窗口分桶，相邻月无需重新取库。
+private struct MonthGridPage: View {
+
+    let month: Date
+    let viewModel: CalendarViewModel
+    let onSelectDay: (Date, ScheduleEntry?) -> Void
+    let onEditNote: (Date) -> Void
+
+    /// 是否为"正在显示的中心月"（决定是否展示冲突横幅与"今天"高亮语义）
+    private var isCenterMonth: Bool {
+        viewModel.displayedMonth.year == month.year && viewModel.displayedMonth.month == month.month
+    }
+
+    private var gridCells: [Date?] {
+        DateUtils.monthGrid(year: month.year,
+                            month: month.month,
+                            firstWeekdayOfWeek: viewModel.firstWeekday,
+                            calendar: .current)
+    }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            weekdayHeader
+
+            ScrollView {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7),
+                          spacing: 4) {
+                    ForEach(Array(gridCells.enumerated()), id: \.offset) { _, item in
+                        cell(for: item)
+                    }
+                }
+                .padding(.horizontal, 8)
+
+                if isCenterMonth && !viewModel.cachedConflicts.isEmpty {
+                    conflictBanner
+                }
+            }
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 4)
+        .glassSurface(cornerRadius: 16)
+        .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
+        .padding(.horizontal, 8)
+    }
+
+    private var weekdayHeader: some View {
+        HStack(spacing: 0) {
+            ForEach(DateUtils.weekdaySymbols(firstWeekdayOfWeek: viewModel.firstWeekday),
+                    id: \.self) { symbol in
+                Text(symbol)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, 8)
+    }
+
+    /// 单元格：点击选班次；长按预览/编辑备注
+    private func cell(for item: Date?) -> some View {
+        Group {
+            if let day = item {
+                Button {
+                    onSelectDay(day, viewModel.entries(on: day).first)
+                } label: {
+                    DayCellView(day: day,
+                                entries: viewModel.entries(on: day),
+                                shiftIndex: viewModel.shiftMap,
+                                isToday: day.isSameDay(as: viewModel.todayReference),
+                                hasNote: viewModel.noteDayKeys.contains(DayNote.dayKey(for: day)))
+                }
+                .buttonStyle(.plain)
+                .contextMenu { contextMenuItems(for: day) }
+            } else {
+                Color.clear.frame(minHeight: 52)
+            }
+        }
+    }
+
+    /// 长按菜单：备注预览（若有）+ 编辑备注 + 选择班次
+    @ViewBuilder
+    private func contextMenuItems(for day: Date) -> some View {
+        let note = viewModel.note(for: day)
+
+        if let note, !note.isEmpty {
+            ForEach(NoteQuadrant.allCases, id: \.rawValue) { quadrant in
+                let items = note.items(for: quadrant)
+                if !items.isEmpty {
+                    Button {
+                        onEditNote(day)
+                    } label: {
+                        Label("\(quadrant.title)：\(items.prefix(2).joined(separator: "、"))",
+                              systemImage: quadrant.iconName)
+                    }
+                }
+            }
+        } else {
+            Button {
+                onEditNote(day)
+            } label: {
+                Label("暂无备注，点击添加", systemImage: "square.grid.2x2")
+            }
+        }
+
+        Divider()
+
+        Button {
+            onEditNote(day)
+        } label: {
+            Label("编辑备注（艾森豪威尔矩阵）", systemImage: "square.and.pencil")
+        }
+
+        Button {
+            onSelectDay(day, viewModel.entries(on: day).first)
+        } label: {
+            Label("选择班次", systemImage: "calendar.badge.plus")
+        }
+    }
+
+    private var conflictBanner: some View {
+        Label("本月有 \(viewModel.cachedConflicts.count) 天存在重复排班，点击格子可修正",
+              systemImage: "exclamationmark.triangle.fill")
+            .font(.footnote)
+            .foregroundStyle(.orange)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+            .background(Color.orange.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .padding(.horizontal)
     }
 }
