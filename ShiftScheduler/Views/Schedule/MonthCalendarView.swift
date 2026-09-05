@@ -92,7 +92,10 @@ struct MonthCalendarView: View {
             ImportSourceView()
                 .presentationBackground(.ultraThinMaterial)
         }
-        .sheet(item: $pickedDay) { picked in
+        // onDismiss 刷新备注索引：用户可能只编辑备注、不指派班次（onDone 不触发），
+        // 否则备注标签要切走 Tab 再回来才显示（Bug 修复 2026-09-06）
+        .sheet(item: $pickedDay,
+               onDismiss: { viewModel.loadNoteDayKeys(context: modelContext) }) { picked in
             ShiftPickerSheet(day: picked.id,
                              member: viewModel.currentMember ?? Member.selfMember(),
                              onDone: {
@@ -101,7 +104,8 @@ struct MonthCalendarView: View {
             },
                              existingEntry: picked.entry)
         }
-        .sheet(item: $noteDayRequest) { request in
+        .sheet(item: $noteDayRequest,
+               onDismiss: { viewModel.loadNoteDayKeys(context: modelContext) }) { request in
             NavigationStack {
                 DayNoteMatrixView(day: request.id)
             }
